@@ -46,16 +46,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
 
     @Override
     public void run() {
-        long startTime;
-        long timeMillis;
-        long waitTime;
-
         while (gameThread != null) {
-            startTime = System.nanoTime();
+            long startTime = System.nanoTime();
             updateGame();
             repaint();
-            timeMillis = (System.nanoTime() - startTime) / 1_000_000;
-            waitTime = targetTime - timeMillis;
+            long timeMillis = (System.nanoTime() - startTime) / 1_000_000;
+            long waitTime = targetTime - timeMillis;
 
             if (waitTime > 0) {
                 try {
@@ -69,12 +65,10 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
 
     private void updateGame() {
         player.update();
-
         var iterator = bullets.iterator();
         while (iterator.hasNext()) {
             Bullet bullet = iterator.next();
             bullet.update();
-
             if (bullet.getBounds().x > WIDTH || bullet.getBounds().x < 0 ||
                 bullet.getBounds().y > HEIGHT || bullet.getBounds().y < 0) {
                 iterator.remove();
@@ -87,13 +81,12 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g.create();
 
+        // --- Draw Game Elements ---
         g2d.setColor(Color.BLACK);
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
-
         if (player.image != null) {
             g2d.drawImage(player.image, player.getX(), player.getY(), player.getWidth(), player.getHeight(), null);
         }
-
         if (player.gunImage != null) {
             AffineTransform oldTransform = g2d.getTransform();
             int playerCenterX = player.getX() + player.getWidth() / 2;
@@ -103,37 +96,59 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             g2d.drawImage(player.gunImage, 0, -(int)player.getGunHeight() / 2, (int)player.getGunWidth(), (int)player.getGunHeight(), null);
             g2d.setTransform(oldTransform);
         }
-
         for (Bullet bullet : bullets) {
             bullet.draw(g2d);
         }
 
+        // --- NEW: Draw the UI on top of everything else ---
+        drawHealthBar(g2d);
+
         g2d.dispose();
     }
 
+    /**
+     * NEW: Draws the player's health bar in the bottom-left corner.
+     */
+    private void drawHealthBar(Graphics2D g2d) {
+        // --- Health Bar Dimensions and Position ---
+        int barWidth = 200;
+        int barHeight = 20;
+        int xPos = 15;
+        int yPos = HEIGHT - barHeight - 15; // 15 pixels from the bottom
+
+        // --- Calculate the width of the current health ---
+        double healthPercent = (double) player.getHealth() / player.getMaxHealth();
+        int currentHealthWidth = (int) (barWidth * healthPercent);
+
+        // --- Draw the background of the health bar (the empty part) ---
+        g2d.setColor(Color.DARK_GRAY);
+        g2d.fillRect(xPos, yPos, barWidth, barHeight);
+        
+        // --- Draw the foreground of the health bar (the current health) ---
+        g2d.setColor(Color.RED);
+        g2d.fillRect(xPos, yPos, currentHealthWidth, barHeight);
+
+        // --- Draw a border for a cleaner look ---
+        g2d.setColor(Color.WHITE);
+        g2d.drawRect(xPos, yPos, barWidth, barHeight);
+    }
+    
     // --- Input Handling ---
     @Override public void keyTyped(KeyEvent e) {}
-
-    // ------------------- THIS IS THE RESTORED CODE -------------------
-    @Override
-    public void keyPressed(KeyEvent e) {
+    @Override public void keyPressed(KeyEvent e) {
         int code = e.getKeyCode();
         if (code == KeyEvent.VK_W) player.movingUp = true;
         if (code == KeyEvent.VK_S) player.movingDown = true;
         if (code == KeyEvent.VK_A) player.movingLeft = true;
         if (code == KeyEvent.VK_D) player.movingRight = true;
     }
-
-    @Override
-    public void keyReleased(KeyEvent e) {
+    @Override public void keyReleased(KeyEvent e) {
         int code = e.getKeyCode();
         if (code == KeyEvent.VK_W) player.movingUp = false;
         if (code == KeyEvent.VK_S) player.movingDown = false;
         if (code == KeyEvent.VK_A) player.movingLeft = false;
         if (code == KeyEvent.VK_D) player.movingRight = false;
     }
-    // ----------------------------------------------------------------
-
     @Override public void mouseMoved(MouseEvent e) { player.updateGunAngle(e.getX(), e.getY()); }
     @Override public void mouseDragged(MouseEvent e) { player.updateGunAngle(e.getX(), e.getY()); }
     @Override public void mousePressed(MouseEvent e) {
@@ -141,15 +156,14 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         int playerCenterY = player.getY() + player.getHeight() / 2;
         bullets.add(new Bullet(playerCenterX, playerCenterY, player.gunAngle));
     }
-    
     @Override public void mouseClicked(MouseEvent e) {}
     @Override public void mouseReleased(MouseEvent e) {}
     @Override public void mouseEntered(MouseEvent e) {}
     @Override public void mouseExited(MouseEvent e) {}
-
+    
     // --- Main Method ---
     public static void main(String[] args) {
-        JFrame window = new JFrame("Simple Java Game - Fixed!");
+        JFrame window = new JFrame("Game with Health Bar");
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         window.setResizable(false);
         GamePanel gamePanel = new GamePanel();

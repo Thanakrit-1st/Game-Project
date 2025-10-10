@@ -7,13 +7,17 @@ import java.io.InputStream;
 
 /**
  * Represents the main character in the game.
- * Manages position, speed, movement state, rendering size, and equipped gun.
+ * Manages position, speed, health, and rendering.
  */
 public class Player {
 
     // Position (x, y coordinates)
     private int x;
     private int y;
+
+    // --- NEW: Health Attributes ---
+    private int health;
+    private final int maxHealth = 100;
 
     // Movement speed in pixels per frame
     private final int speed = 5;
@@ -38,6 +42,7 @@ public class Player {
     public Player(int startX, int startY) {
         this.x = startX;
         this.y = startY;
+        this.health = this.maxHealth; // Start with full health
         loadImages();
     }
 
@@ -46,22 +51,19 @@ public class Player {
         try {
             String resourcePath = "/res/images/Protagonist.png";
             InputStream is = getClass().getResourceAsStream(resourcePath);
-            if (is == null) throw new IOException("Resource not found in classpath: " + resourcePath);
+            if (is == null) throw new IOException("Resource not found: " + resourcePath);
             image = ImageIO.read(is);
-            System.out.println("Player image loaded successfully.");
         } catch (IOException e) {
             System.err.println("Failed to load player image: " + e.getMessage());
             image = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
-            image.getGraphics().fillRect(0, 0, 32, 32);
         }
 
         // --- Load Gun Image ---
         try {
             String resourcePath = "/res/images/gun.png";
             InputStream is = getClass().getResourceAsStream(resourcePath);
-            if (is == null) throw new IOException("Resource not found in classpath: " + resourcePath);
+            if (is == null) throw new IOException("Resource not found: " + resourcePath);
             gunImage = ImageIO.read(is);
-            System.out.println("Gun image loaded successfully.");
         } catch (IOException e) {
             System.err.println("Failed to load gun image: " + e.getMessage());
         }
@@ -81,23 +83,22 @@ public class Player {
         double dy = mouseY - playerCenterY;
         this.gunAngle = Math.atan2(dy, dx);
     }
+    
+    // --- NEW: Method to reduce player's health ---
+    public void takeDamage(int amount) {
+        this.health -= amount;
+        if (this.health < 0) {
+            this.health = 0; // Prevent health from going below zero
+        }
+    }
 
-    // --- Getters and Setters ---
+    // --- Getters ---
     public int getX() { return x; }
     public int getY() { return y; }
-
-    public int getWidth() {
-        return (image != null ? image.getWidth() : 32) * char_scale;
-    }
-    public int getHeight() {
-        return (image != null ? image.getHeight() : 32) * char_scale;
-    }
-
-    // NEW: Getters for scaled size of the gun (return double)
-    public double getGunWidth() {
-        return (gunImage != null ? gunImage.getWidth() : 0) * gun_scale;
-    }
-    public double getGunHeight() {
-        return (gunImage != null ? gunImage.getHeight() : 0) * gun_scale;
-    }
+    public int getWidth() { return (image != null ? image.getWidth() : 0) * char_scale; }
+    public int getHeight() { return (image != null ? image.getHeight() : 0) * char_scale; }
+    public double getGunWidth() { return (gunImage != null ? gunImage.getWidth() : 0) * gun_scale; }
+    public double getGunHeight() { return (gunImage != null ? gunImage.getHeight() : 0) * gun_scale; }
+    public int getHealth() { return health; } // <-- NEW
+    public int getMaxHealth() { return maxHealth; } // <-- NEW
 }
