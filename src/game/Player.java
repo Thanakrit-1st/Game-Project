@@ -1,13 +1,13 @@
 package src.game;
+
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
-import java.io.InputStream; // New import for loading resource streams
+import java.io.InputStream;
 
 /**
  * Represents the main character in the game.
- * Manages position, speed, movement state, and rendering size.
+ * Manages position, speed, movement state, rendering size, and equipped gun.
  */
 public class Player {
 
@@ -17,9 +17,10 @@ public class Player {
 
     // Movement speed in pixels per frame
     private final int speed = 5;
-    
-    // Scale factor to make the character bigger (e.g., 2 means twice the original size)
-    private final int scale = 3; // <-- CHANGE THIS NUMBER TO YOUR DESIRED SCALE
+
+    // Scale factors
+    private final int char_scale = 3;
+    private final double gun_scale = 0.125;
 
     // Movement state flags
     public boolean movingUp = false;
@@ -27,82 +28,76 @@ public class Player {
     public boolean movingLeft = false;
     public boolean movingRight = false;
 
-    // Image for drawing the player
+    // Images for drawing
     public BufferedImage image;
+    public BufferedImage gunImage;
 
-    /**
-     * Constructor to initialize the player's starting position and load the image.
-     * @param startX Initial X coordinate.
-     * @param startY Initial Y coordinate.
-     */
+    // Gun rotation angle
+    public double gunAngle = 0.0;
+
     public Player(int startX, int startY) {
         this.x = startX;
         this.y = startY;
-        loadImage();
+        loadImages();
     }
 
-    /**
-     * Loads the player image from the project's resource path using ClassLoader.
-     * This is the recommended way for files packaged with the application.
-     */
-    private void loadImage() {
-        // Path starts with '/' to indicate the root of the classpath (which is usually the OOP-PROJECT directory).
-        // The path structure mirrors the project structure: /res/images/Protagonist.png
-        String resourcePath = "/res/images/Protagonist.png"; 
-
-        try (InputStream is = getClass().getResourceAsStream(resourcePath)) {
-            if (is == null) {
-                // If the stream is null, the resource wasn't found at that path.
-                throw new IOException("Resource not found in classpath: " + resourcePath);
-            }
-            
+    private void loadImages() {
+        // --- Load Player Image ---
+        try {
+            String resourcePath = "/res/images/Protagonist.png";
+            InputStream is = getClass().getResourceAsStream(resourcePath);
+            if (is == null) throw new IOException("Resource not found in classpath: " + resourcePath);
             image = ImageIO.read(is);
-            if (image != null) {
-                System.out.println("Image loaded successfully as resource stream: " + resourcePath);
-            } else {
-                 throw new IOException("ImageIO returned null. Could not read image stream.");
-            }
+            System.out.println("Player image loaded successfully.");
         } catch (IOException e) {
-            System.err.println("--- IMAGE LOADING ERROR ---");
-            System.err.println("Failed to load image from resource path: " + resourcePath);
-            System.err.println("Cause: " + e.getMessage());
-            System.err.println("Fallback to white square.");
-            
-            // Create a fallback image (the white square)
+            System.err.println("Failed to load player image: " + e.getMessage());
             image = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
             image.getGraphics().fillRect(0, 0, 32, 32);
         }
+
+        // --- Load Gun Image ---
+        try {
+            String resourcePath = "/res/images/gun.png";
+            InputStream is = getClass().getResourceAsStream(resourcePath);
+            if (is == null) throw new IOException("Resource not found in classpath: " + resourcePath);
+            gunImage = ImageIO.read(is);
+            System.out.println("Gun image loaded successfully.");
+        } catch (IOException e) {
+            System.err.println("Failed to load gun image: " + e.getMessage());
+        }
     }
 
-    /**
-     * Updates the player's position based on the current movement flags.
-     */
     public void update() {
-        if (movingUp) {
-            y -= speed;
-        }
-        if (movingDown) {
-            y += speed;
-        }
-        if (movingLeft) {
-            x -= speed;
-        }
-        if (movingRight) {
-            x += speed;
-        }
+        if (movingUp) y -= speed;
+        if (movingDown) y += speed;
+        if (movingLeft) x -= speed;
+        if (movingRight) x += speed;
+    }
+
+    public void updateGunAngle(int mouseX, int mouseY) {
+        int playerCenterX = this.x + getWidth() / 2;
+        int playerCenterY = this.y + getHeight() / 2;
+        double dx = mouseX - playerCenterX;
+        double dy = mouseY - playerCenterY;
+        this.gunAngle = Math.atan2(dy, dx);
     }
 
     // --- Getters and Setters ---
     public int getX() { return x; }
     public int getY() { return y; }
-    
-    // Getters now return scaled size
-    public int getWidth() { 
-        // Original width (e.g., 32) * scale (e.g., 2) = 64
-        return (image != null ? image.getWidth() : 32) * scale; 
+
+    public int getWidth() {
+        return (image != null ? image.getWidth() : 32) * char_scale;
     }
-    public int getHeight() { 
-        // Original height (e.g., 32) * scale (e.g., 2) = 64
-        return (image != null ? image.getHeight() : 32) * scale; 
+    public int getHeight() {
+        return (image != null ? image.getHeight() : 32) * char_scale;
+    }
+
+    // NEW: Getters for scaled size of the gun (return double)
+    public double getGunWidth() {
+        return (gunImage != null ? gunImage.getWidth() : 0) * gun_scale;
+    }
+    public double getGunHeight() {
+        return (gunImage != null ? gunImage.getHeight() : 0) * gun_scale;
     }
 }
