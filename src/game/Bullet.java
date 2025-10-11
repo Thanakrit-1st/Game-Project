@@ -12,7 +12,7 @@ public class Bullet {
 
     private double x, y; // Use double for precise position
     private final int size = 8; // The width and height of the bullet
-    private final double speed = 10.0; // The speed at which the bullet travels
+    private final double speed = 15.0; // The speed at which the bullet travels
 
     // The velocity components (how much x and y change each frame)
     private final double velX;
