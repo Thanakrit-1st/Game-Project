@@ -19,7 +19,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     public static final int WIDTH = 800;
     public static final int HEIGHT = 600;
     private final int FPS = 60;
-    private enum GameState { START_MENU, PLAYING, GAME_OVER }
+    private enum GameState { START_MENU, PLAYING, GAME_OVER, WAVE_COMPLETED }
     private GameState gameState;
     private Thread gameThread;
     private Player player;
@@ -35,6 +35,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private boolean bossSpawnedThisWave = false;
     private long lastSpawnTime;
     private final long spawnCooldown = 2000;
+    
+    private BufferedImage hpCardImg, damageCardImg, gunMasterCardImg;
+    private Rectangle hpCardBounds, damageCardBounds, gunMasterCardBounds;
 
     public GamePanel() {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -43,6 +46,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         gameState = GameState.START_MENU;
         player = new Player(WIDTH / 2, HEIGHT / 2);
         loadStartButtonImage();
+        loadSkillCardImages();
         startGameLoop();
     }
     
@@ -57,6 +61,29 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             startButtonBounds = new Rectangle((WIDTH - btnWidth) / 2, (HEIGHT - btnHeight) / 2, btnWidth, btnHeight);
         } catch (IOException e) {
             System.err.println("Failed to load start button image: " + e.getMessage());
+        }
+    }
+    
+    private void loadSkillCardImages() {
+        try {
+            hpCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/need more hp.png"));
+            damageCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/DeadlyBullet.png"));
+            gunMasterCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/GunMaster.png"));
+            
+            int cardWidth = hpCardImg.getWidth();
+            int cardHeight = hpCardImg.getHeight();
+            int spacing = 30;
+            int totalWidth = (cardWidth * 3) + (spacing * 2);
+            int startX = (WIDTH - totalWidth) / 2;
+            int y = (HEIGHT - cardHeight) / 2;
+            
+            hpCardBounds = new Rectangle(startX, y, cardWidth, cardHeight);
+            damageCardBounds = new Rectangle(startX + cardWidth + spacing, y, cardWidth, cardHeight);
+            gunMasterCardBounds = new Rectangle(startX + (cardWidth + spacing) * 2, y, cardWidth, cardHeight);
+
+        } catch (Exception e) {
+            System.err.println("Failed to load one or more skill card images.");
+            e.printStackTrace();
         }
     }
 
@@ -125,18 +152,18 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             for (int i = 0; i < monsters.size(); i++) {
                 Monster monster = monsters.get(i);
                 if (bullet.getBounds().intersects(monster.getBounds())) {
-                    monster.takeDamage(5);
+                    monster.takeDamage(bullet.getDamage());
                     bulletIter.remove();
                     
                     if (monster.isBoss() && monster.getHealth() <= 0) {
-                        startNextWave();
+                        player.healToMax();
+                        gameState = GameState.WAVE_COMPLETED;
                         return; 
                     }
                     break;
                 }
             }
         }
-
         Iterator<Monster> monsterIter = monsters.iterator();
         while (monsterIter.hasNext()) {
             Monster monster = monsterIter.next();
@@ -157,6 +184,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         bossSpawnedThisWave = false;
         bullets.clear();
         monsters.clear();
+        gameState = GameState.PLAYING;
     }
 
     private void resetGame() {
@@ -206,12 +234,25 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                 g2d.setTransform(old);
             }
             for (Bullet b : bullets) b.draw(g2d);
-            
             drawHealthBar(g2d);
             drawWaveUI(g2d);
             drawAmmoUI(g2d);
+        } else if (gameState == GameState.WAVE_COMPLETED) {
+            drawSkillCardScreen(g2d);
         }
         g2d.dispose();
+    }
+    
+    private void drawSkillCardScreen(Graphics2D g2d) {
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(new Font("Consolas", Font.BOLD, 48));
+        String title = "Choose Your Upgrade!";
+        int w = g2d.getFontMetrics().stringWidth(title);
+        g2d.drawString(title, (WIDTH - w) / 2, 100);
+
+        if (hpCardImg != null) g2d.drawImage(hpCardImg, hpCardBounds.x, hpCardBounds.y, null);
+        if (damageCardImg != null) g2d.drawImage(damageCardImg, damageCardBounds.x, damageCardBounds.y, null);
+        if (gunMasterCardImg != null) g2d.drawImage(gunMasterCardImg, gunMasterCardBounds.x, gunMasterCardBounds.y, null);
     }
 
     private void drawWaveUI(Graphics2D g2d) {
@@ -266,27 +307,32 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             }
         } else if (gameState == GameState.PLAYING) {
             if (player.shoot()) {
-                bullets.add(new Bullet(player.getX() + player.getWidth() / 2.0, player.getY() + player.getHeight() / 2.0, player.gunAngle));
+                bullets.add(new Bullet(player.getX() + player.getWidth() / 2.0, player.getY() + player.getHeight() / 2.0, player.gunAngle, player.getBulletDamage()));
+            }
+        } else if (gameState == GameState.WAVE_COMPLETED) {
+            if (hpCardBounds.contains(e.getPoint())) {
+                player.increaseMaxHealth(10);
+                startNextWave();
+            } else if (damageCardBounds.contains(e.getPoint())) {
+                player.increaseBulletDamage(1);
+                startNextWave();
+            } else if (gunMasterCardBounds.contains(e.getPoint())) {
+                player.improveGunStats(200, 5); // 200ms = 0.2s
+                startNextWave();
             }
         }
     }
     
     @Override public void keyTyped(KeyEvent e) {}
-    
-    @Override 
-    public void keyPressed(KeyEvent e) { 
+    @Override public void keyPressed(KeyEvent e) { 
         if (gameState != GameState.PLAYING) return; 
         int c = e.getKeyCode(); 
         if (c == KeyEvent.VK_W) player.movingUp = true; 
         if (c == KeyEvent.VK_S) player.movingDown = true; 
         if (c == KeyEvent.VK_A) player.movingLeft = true; 
         if (c == KeyEvent.VK_D) player.movingRight = true;
-        // --- UPDATED: Added manual reload key ---
-        if (c == KeyEvent.VK_R) {
-            player.startReload();
-        }
+        if (c == KeyEvent.VK_R) player.startReload();
     }
-    
     @Override public void keyReleased(KeyEvent e) { if (gameState != GameState.PLAYING) return; int c = e.getKeyCode(); if (c == KeyEvent.VK_W) player.movingUp = false; if (c == KeyEvent.VK_S) player.movingDown = false; if (c == KeyEvent.VK_A) player.movingLeft = false; if (c == KeyEvent.VK_D) player.movingRight = false; }
     @Override public void mouseMoved(MouseEvent e) { if (gameState == GameState.PLAYING) player.updateGunAngle(e.getX(), e.getY()); }
     @Override public void mouseDragged(MouseEvent e) { if (gameState == GameState.PLAYING) player.updateGunAngle(e.getX(), e.getY()); }

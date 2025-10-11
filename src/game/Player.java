@@ -9,7 +9,7 @@ import java.awt.Rectangle;
 public class Player {
     private int x, y;
     private int health;
-    private final int maxHealth = 100;
+    private int maxHealth = 100; // Can now be modified
     private final int speed = 5;
     private final int char_scale = 3;
     private final double gun_scale = 0.125;
@@ -17,12 +17,15 @@ public class Player {
     public BufferedImage image, gunImage;
     public double gunAngle = 0.0;
 
-    // --- UPDATED: Ammo and Reloading Attributes ---
-    private final int maxAmmo = 15;
+    // --- Ammo and Reloading Attributes ---
+    private int maxAmmo = 15; // Can now be modified
     private int currentAmmo;
     private boolean isReloading = false;
     private long reloadStartTime;
-    private final long reloadTime = 1500; // UPDATED: 1.5 seconds in milliseconds
+    private double reloadTime = 1500; // Can now be modified
+
+    // --- Bullet Damage Attribute ---
+    private int bulletDamage = 5;
 
     public Player(int startX, int startY) {
         this.x = startX;
@@ -35,25 +38,22 @@ public class Player {
     private void loadImages() {
         try {
             InputStream is = getClass().getResourceAsStream("/res/images/Protagonist.png");
-            if (is == null) throw new IOException("Resource not found: /res/images/Protagonist.png");
+            if (is == null) throw new IOException("Resource not found");
             image = ImageIO.read(is);
         } catch (IOException e) { System.err.println("Failed to load player image: " + e.getMessage()); }
         try {
             InputStream is = getClass().getResourceAsStream("/res/images/gun.png");
-            if (is == null) throw new IOException("Resource not found: /res/images/gun.png");
+            if (is == null) throw new IOException("Resource not found");
             gunImage = ImageIO.read(is);
         } catch (IOException e) { System.err.println("Failed to load gun image: " + e.getMessage()); }
     }
 
     public void update() {
-        // --- Movement ---
         if (movingUp) y -= speed;
         if (movingDown) y += speed;
         if (movingLeft) x -= speed;
         if (movingRight) x += speed;
 
-        // --- UPDATED: Simplified Reloading Logic ---
-        // This timer now only runs after a reload has been started manually or by emptying the clip.
         if (isReloading) {
             if (System.currentTimeMillis() - reloadStartTime >= reloadTime) {
                 isReloading = false;
@@ -66,21 +66,41 @@ public class Player {
         if (!isReloading && currentAmmo > 0) {
             currentAmmo--;
             if (currentAmmo == 0) {
-                startReload(); // Still auto-reloads when clip is empty
+                startReload();
             }
-            return true; // Shot was successful
+            return true;
         }
-        return false; // Cannot shoot
+        return false;
     }
 
     public void startReload() {
-        // Start reload only if not already reloading and ammo isn't full
         if (!isReloading && currentAmmo < maxAmmo) {
             isReloading = true;
             reloadStartTime = System.currentTimeMillis();
         }
     }
     
+    // --- Methods for Applying Skill Card Upgrades ---
+    public void increaseMaxHealth(int amount) {
+        this.maxHealth += amount;
+    }
+
+    public void increaseBulletDamage(int amount) {
+        this.bulletDamage += amount;
+    }
+    
+    public void improveGunStats(double reloadReduction, int ammoIncrease) {
+        this.reloadTime -= reloadReduction;
+        if (this.reloadTime < 100) { // Cap reload time at 0.1 seconds
+            this.reloadTime = 100;
+        }
+        this.maxAmmo += ammoIncrease;
+    }
+    
+    public void healToMax() {
+        this.health = this.maxHealth;
+    }
+
     public void updateGunAngle(int mouseX, int mouseY) {
         double dx = mouseX - (this.x + getWidth() / 2.0);
         double dy = mouseY - (this.y + getHeight() / 2.0);
@@ -92,11 +112,7 @@ public class Player {
         if (this.health < 0) this.health = 0;
     }
 
-    public Rectangle getBounds() {
-        return new Rectangle(x, y, getWidth(), getHeight());
-    }
-    
-    // --- Getters ---
+    public Rectangle getBounds() { return new Rectangle(x, y, getWidth(), getHeight()); }
     public int getX() { return x; }
     public int getY() { return y; }
     public int getWidth() { return (image != null ? image.getWidth() : 0) * char_scale; }
@@ -108,5 +124,6 @@ public class Player {
     public int getCurrentAmmo() { return currentAmmo; }
     public int getMaxAmmo() { return maxAmmo; }
     public boolean isReloading() { return isReloading; }
+    public int getBulletDamage() { return bulletDamage; }
 }
 

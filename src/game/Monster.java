@@ -13,7 +13,7 @@ public class Monster {
     private int health;
     private final double speed;
     private BufferedImage image;
-    private final double scale = 1.5;
+    private final double scale = 1.5; // Smaller scale
     private int width, height;
     private final boolean isBoss;
 
