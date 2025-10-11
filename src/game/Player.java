@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import javax.imageio.ImageIO;
 import java.io.InputStream;
+import java.awt.Rectangle; // <-- NEW: Import for collision detection
 
 /**
  * Represents the main character in the game.
@@ -11,58 +12,35 @@ import java.io.InputStream;
  */
 public class Player {
 
-    // Position (x, y coordinates)
-    private int x;
-    private int y;
-
-    // --- NEW: Health Attributes ---
+    private int x, y;
     private int health;
     private final int maxHealth = 100;
-
-    // Movement speed in pixels per frame
     private final int speed = 5;
-
-    // Scale factors
     private final int char_scale = 3;
     private final double gun_scale = 0.125;
 
-    // Movement state flags
-    public boolean movingUp = false;
-    public boolean movingDown = false;
-    public boolean movingLeft = false;
-    public boolean movingRight = false;
-
-    // Images for drawing
-    public BufferedImage image;
-    public BufferedImage gunImage;
-
-    // Gun rotation angle
+    public boolean movingUp, movingDown, movingLeft, movingRight;
+    public BufferedImage image, gunImage;
     public double gunAngle = 0.0;
 
     public Player(int startX, int startY) {
         this.x = startX;
         this.y = startY;
-        this.health = this.maxHealth; // Start with full health
+        this.health = this.maxHealth;
         loadImages();
     }
 
     private void loadImages() {
-        // --- Load Player Image ---
         try {
-            String resourcePath = "/res/images/Protagonist.png";
-            InputStream is = getClass().getResourceAsStream(resourcePath);
-            if (is == null) throw new IOException("Resource not found: " + resourcePath);
+            InputStream is = getClass().getResourceAsStream("/res/images/Protagonist.png");
+            if (is == null) throw new IOException("Resource not found: /res/images/Protagonist.png");
             image = ImageIO.read(is);
         } catch (IOException e) {
             System.err.println("Failed to load player image: " + e.getMessage());
-            image = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
         }
-
-        // --- Load Gun Image ---
         try {
-            String resourcePath = "/res/images/gun.png";
-            InputStream is = getClass().getResourceAsStream(resourcePath);
-            if (is == null) throw new IOException("Resource not found: " + resourcePath);
+            InputStream is = getClass().getResourceAsStream("/res/images/gun.png");
+            if (is == null) throw new IOException("Resource not found: /res/images/gun.png");
             gunImage = ImageIO.read(is);
         } catch (IOException e) {
             System.err.println("Failed to load gun image: " + e.getMessage());
@@ -77,19 +55,19 @@ public class Player {
     }
 
     public void updateGunAngle(int mouseX, int mouseY) {
-        int playerCenterX = this.x + getWidth() / 2;
-        int playerCenterY = this.y + getHeight() / 2;
-        double dx = mouseX - playerCenterX;
-        double dy = mouseY - playerCenterY;
+        double dx = mouseX - (this.x + getWidth() / 2.0);
+        double dy = mouseY - (this.y + getHeight() / 2.0);
         this.gunAngle = Math.atan2(dy, dx);
     }
     
-    // --- NEW: Method to reduce player's health ---
     public void takeDamage(int amount) {
         this.health -= amount;
-        if (this.health < 0) {
-            this.health = 0; // Prevent health from going below zero
-        }
+        if (this.health < 0) this.health = 0;
+    }
+
+    // --- NEW: Method for collision detection ---
+    public Rectangle getBounds() {
+        return new Rectangle(x, y, getWidth(), getHeight());
     }
 
     // --- Getters ---
@@ -99,6 +77,6 @@ public class Player {
     public int getHeight() { return (image != null ? image.getHeight() : 0) * char_scale; }
     public double getGunWidth() { return (gunImage != null ? gunImage.getWidth() : 0) * gun_scale; }
     public double getGunHeight() { return (gunImage != null ? gunImage.getHeight() : 0) * gun_scale; }
-    public int getHealth() { return health; } // <-- NEW
-    public int getMaxHealth() { return maxHealth; } // <-- NEW
+    public int getHealth() { return health; }
+    public int getMaxHealth() { return maxHealth; }
 }

@@ -2,30 +2,29 @@ package src.game;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
+import java.awt.*;
+import java.awt.event.*;
 import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+import java.util.Iterator;
 
 public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMotionListener, MouseListener {
 
-    private final Player player;
-    private Thread gameThread;
-    private final int FPS = 60;
-    private final long targetTime = 1000 / FPS;
-
     public static final int WIDTH = 800;
     public static final int HEIGHT = 600;
-
+    private final int FPS = 60;
+    
+    private Thread gameThread;
+    private final Player player;
     private final List<Bullet> bullets = new ArrayList<>();
+    private final List<Monster> monsters = new ArrayList<>();
+    private final Random rand = new Random();
+    
+    // --- Monster Spawning Attributes ---
+    private long lastSpawnTime;
+    private final long spawnCooldown = 2000; // Spawn a new monster every 2 seconds
 
     public GamePanel() {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -34,8 +33,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         addKeyListener(this);
         addMouseMotionListener(this);
         addMouseListener(this);
-
         player = new Player(WIDTH / 2, HEIGHT / 2);
+        lastSpawnTime = System.currentTimeMillis();
         startGameLoop();
     }
 
@@ -46,32 +45,83 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
 
     @Override
     public void run() {
+        long targetTime = 1000 / FPS;
         while (gameThread != null) {
             long startTime = System.nanoTime();
             updateGame();
             repaint();
             long timeMillis = (System.nanoTime() - startTime) / 1_000_000;
             long waitTime = targetTime - timeMillis;
-
             if (waitTime > 0) {
-                try {
-                    Thread.sleep(waitTime);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+                try { Thread.sleep(waitTime); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             }
         }
     }
 
     private void updateGame() {
         player.update();
-        var iterator = bullets.iterator();
-        while (iterator.hasNext()) {
-            Bullet bullet = iterator.next();
-            bullet.update();
-            if (bullet.getBounds().x > WIDTH || bullet.getBounds().x < 0 ||
-                bullet.getBounds().y > HEIGHT || bullet.getBounds().y < 0) {
-                iterator.remove();
+
+        // --- Handle Monster Spawning ---
+        if (System.currentTimeMillis() - lastSpawnTime > spawnCooldown) {
+            spawnMonster();
+            lastSpawnTime = System.currentTimeMillis();
+        }
+        
+        // --- Update Bullets and Monsters ---
+        for (Bullet b : bullets) b.update();
+        for (Monster m : monsters) m.update(player);
+
+        // --- Handle Collisions ---
+        checkCollisions();
+
+        // --- Remove Off-screen Bullets and Dead Monsters ---
+        bullets.removeIf(b -> b.getBounds().x > WIDTH || b.getBounds().x < 0 || b.getBounds().y > HEIGHT || b.getBounds().y < 0);
+        monsters.removeIf(m -> m.getHealth() <= 0);
+    }
+
+    private void spawnMonster() {
+        int spawnSide = rand.nextInt(4); // 0=top, 1=right, 2=bottom, 3=left
+        double x = 0, y = 0;
+        int monsterSize = 64; // Approx size for spawning outside screen
+
+        switch (spawnSide) {
+            case 0: x = rand.nextInt(WIDTH); y = -monsterSize; break;
+            case 1: x = WIDTH; y = rand.nextInt(HEIGHT); break;
+            case 2: x = rand.nextInt(WIDTH); y = HEIGHT; break;
+            case 3: x = -monsterSize; y = rand.nextInt(HEIGHT); break;
+        }
+
+        // Randomly choose which monster type to spawn
+        if (rand.nextBoolean()) {
+            monsters.add(new Monster(x, y, 20, 3.0, "/res/images/Monster1.png")); // Slower monster
+        } else {
+            monsters.add(new Monster(x, y, 10, 6.0, "/res/images/Monster2.png")); // Faster monster
+        }
+    }
+
+    private void checkCollisions() {
+        // --- Bullet vs Monster Collision ---
+        Iterator<Bullet> bulletIter = bullets.iterator();
+        while (bulletIter.hasNext()) {
+            Bullet bullet = bulletIter.next();
+            Iterator<Monster> monsterIter = monsters.iterator();
+            while (monsterIter.hasNext()) {
+                Monster monster = monsterIter.next();
+                if (bullet.getBounds().intersects(monster.getBounds())) {
+                    monster.takeDamage(5); // Each bullet does 5 damage
+                    bulletIter.remove(); // Remove the bullet
+                    break; // A bullet can only hit one monster
+                }
+            }
+        }
+
+        // --- Player vs Monster Collision ---
+        Iterator<Monster> monsterIter = monsters.iterator();
+        while (monsterIter.hasNext()) {
+            Monster monster = monsterIter.next();
+            if (player.getBounds().intersects(monster.getBounds())) {
+                player.takeDamage(10);
+                monsterIter.remove(); // Remove the monster that hit the player
             }
         }
     }
@@ -80,94 +130,66 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g.create();
-
-        // --- Draw Game Elements ---
         g2d.setColor(Color.BLACK);
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
-        if (player.image != null) {
-            g2d.drawImage(player.image, player.getX(), player.getY(), player.getWidth(), player.getHeight(), null);
-        }
+        
+        // Draw Monsters (drawn first so player is on top)
+        for (Monster m : monsters) m.draw(g2d);
+        
+        // Draw Player and Gun
+        if (player.image != null) g2d.drawImage(player.image, player.getX(), player.getY(), player.getWidth(), player.getHeight(), null);
         if (player.gunImage != null) {
-            AffineTransform oldTransform = g2d.getTransform();
-            int playerCenterX = player.getX() + player.getWidth() / 2;
-            int playerCenterY = player.getY() + player.getHeight() / 2;
-            g2d.translate(playerCenterX, playerCenterY);
+            AffineTransform old = g2d.getTransform();
+            g2d.translate(player.getX() + player.getWidth() / 2.0, player.getY() + player.getHeight() / 2.0);
             g2d.rotate(player.gunAngle);
             g2d.drawImage(player.gunImage, 0, -(int)player.getGunHeight() / 2, (int)player.getGunWidth(), (int)player.getGunHeight(), null);
-            g2d.setTransform(oldTransform);
+            g2d.setTransform(old);
         }
-        for (Bullet bullet : bullets) {
-            bullet.draw(g2d);
-        }
+        
+        // Draw Bullets
+        for (Bullet b : bullets) b.draw(g2d);
 
-        // --- NEW: Draw the UI on top of everything else ---
+        // Draw UI
         drawHealthBar(g2d);
-
         g2d.dispose();
     }
 
-    /**
-     * NEW: Draws the player's health bar in the bottom-left corner.
-     */
     private void drawHealthBar(Graphics2D g2d) {
-        // --- Health Bar Dimensions and Position ---
-        int barWidth = 200;
-        int barHeight = 20;
-        int xPos = 15;
-        int yPos = HEIGHT - barHeight - 15; // 15 pixels from the bottom
-
-        // --- Calculate the width of the current health ---
+        int barWidth = 200, barHeight = 20, xPos = 15, yPos = HEIGHT - barHeight - 15;
         double healthPercent = (double) player.getHealth() / player.getMaxHealth();
         int currentHealthWidth = (int) (barWidth * healthPercent);
-
-        // --- Draw the background of the health bar (the empty part) ---
         g2d.setColor(Color.DARK_GRAY);
         g2d.fillRect(xPos, yPos, barWidth, barHeight);
-        
-        // --- Draw the foreground of the health bar (the current health) ---
         g2d.setColor(Color.RED);
         g2d.fillRect(xPos, yPos, currentHealthWidth, barHeight);
-
-        // --- Draw a border for a cleaner look ---
         g2d.setColor(Color.WHITE);
         g2d.drawRect(xPos, yPos, barWidth, barHeight);
     }
     
-    // --- Input Handling ---
     @Override public void keyTyped(KeyEvent e) {}
     @Override public void keyPressed(KeyEvent e) {
-        int code = e.getKeyCode();
-        if (code == KeyEvent.VK_W) player.movingUp = true;
-        if (code == KeyEvent.VK_S) player.movingDown = true;
-        if (code == KeyEvent.VK_A) player.movingLeft = true;
-        if (code == KeyEvent.VK_D) player.movingRight = true;
+        int c = e.getKeyCode();
+        if (c == KeyEvent.VK_W) player.movingUp = true; if (c == KeyEvent.VK_S) player.movingDown = true;
+        if (c == KeyEvent.VK_A) player.movingLeft = true; if (c == KeyEvent.VK_D) player.movingRight = true;
     }
     @Override public void keyReleased(KeyEvent e) {
-        int code = e.getKeyCode();
-        if (code == KeyEvent.VK_W) player.movingUp = false;
-        if (code == KeyEvent.VK_S) player.movingDown = false;
-        if (code == KeyEvent.VK_A) player.movingLeft = false;
-        if (code == KeyEvent.VK_D) player.movingRight = false;
+        int c = e.getKeyCode();
+        if (c == KeyEvent.VK_W) player.movingUp = false; if (c == KeyEvent.VK_S) player.movingDown = false;
+        if (c == KeyEvent.VK_A) player.movingLeft = false; if (c == KeyEvent.VK_D) player.movingRight = false;
     }
     @Override public void mouseMoved(MouseEvent e) { player.updateGunAngle(e.getX(), e.getY()); }
     @Override public void mouseDragged(MouseEvent e) { player.updateGunAngle(e.getX(), e.getY()); }
     @Override public void mousePressed(MouseEvent e) {
-        int playerCenterX = player.getX() + player.getWidth() / 2;
-        int playerCenterY = player.getY() + player.getHeight() / 2;
-        bullets.add(new Bullet(playerCenterX, playerCenterY, player.gunAngle));
+        bullets.add(new Bullet(player.getX() + player.getWidth() / 2.0, player.getY() + player.getHeight() / 2.0, player.gunAngle));
     }
-    @Override public void mouseClicked(MouseEvent e) {}
-    @Override public void mouseReleased(MouseEvent e) {}
-    @Override public void mouseEntered(MouseEvent e) {}
-    @Override public void mouseExited(MouseEvent e) {}
+    @Override public void mouseClicked(MouseEvent e) {} @Override public void mouseReleased(MouseEvent e) {}
+    @Override public void mouseEntered(MouseEvent e) {} @Override public void mouseExited(MouseEvent e) {}
     
-    // --- Main Method ---
     public static void main(String[] args) {
-        JFrame window = new JFrame("Game with Health Bar");
+        JFrame window = new JFrame("Monster Survival Game");
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         window.setResizable(false);
-        GamePanel gamePanel = new GamePanel();
-        window.add(gamePanel);
+        window.add(new GamePanel());
         window.pack();
         window.setLocationRelativeTo(null);
         window.setVisible(true);
