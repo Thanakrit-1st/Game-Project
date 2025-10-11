@@ -13,7 +13,7 @@ public class Monster {
     private int health;
     private final double speed;
     private BufferedImage image;
-    private final double scale = 1.5; // <-- UPDATED: Changed from int to double and reduced size
+    private final double scale = 1.5;
     private int width, height;
     private final boolean isBoss;
 
@@ -25,11 +25,9 @@ public class Monster {
         this.isBoss = isBoss;
         loadImage(imagePath);
 
-        // UPDATED: Boss is now larger relative to the new smaller size
         double currentScale = isBoss ? scale + 1.0 : scale;
 
         if (this.image != null) {
-            // UPDATED: Cast to int after scaling
             this.width = (int) (image.getWidth() * currentScale);
             this.height = (int) (image.getHeight() * currentScale);
         } else {

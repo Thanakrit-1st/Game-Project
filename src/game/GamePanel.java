@@ -17,7 +17,7 @@ import java.util.Iterator;
 public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMotionListener, MouseListener {
 
     public static final int WIDTH = 800;
-    public static final int HEIGHT = 600;
+    public static final int HEIGHT = 750;
     private final int FPS = 60;
 
     private enum GameState { START_MENU, PLAYING, GAME_OVER }
@@ -138,28 +138,37 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     }
 
     private void spawnBoss() {
-        int bossHealth = (int)(200 * Math.pow(1.15, wave - 1));
+        // --- UPDATED: Boss base health is now 100 ---
+        int bossHealth = (int)(100 * Math.pow(1.15, wave - 1));
         monsters.add(new Monster(WIDTH / 2.0, -100, bossHealth, 3.0, "/res/images/boss.png", true));
         bossSpawnedThisWave = true;
     }
 
+    // --- UPDATED: Restructured this method to prevent the crash ---
     private void checkCollisions() {
+        // --- Bullet vs Monster ---
         Iterator<Bullet> bulletIter = bullets.iterator();
         while (bulletIter.hasNext()) {
             Bullet bullet = bulletIter.next();
-            for (Monster monster : monsters) {
+            // We use a standard for-loop here to avoid concurrent modification on the monsters list
+            for (int i = 0; i < monsters.size(); i++) {
+                Monster monster = monsters.get(i);
                 if (bullet.getBounds().intersects(monster.getBounds())) {
                     monster.takeDamage(5);
-                    bulletIter.remove();
+                    bulletIter.remove(); // Safely remove bullet using its iterator
                     
                     if (monster.isBoss() && monster.getHealth() <= 0) {
                         startNextWave();
+                        // IMPORTANT: Exit the entire method immediately after starting a new wave
+                        // This prevents the game from trying to check collisions on cleared lists.
+                        return; 
                     }
-                    break; 
+                    break; // Bullet is gone, no need to check other monsters
                 }
             }
         }
 
+        // --- Player vs Monster ---
         Iterator<Monster> monsterIter = monsters.iterator();
         while (monsterIter.hasNext()) {
             Monster monster = monsterIter.next();
@@ -169,7 +178,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                 } else {
                     player.takeDamage(10);
                 }
-                monsterIter.remove();
+                monsterIter.remove(); // Safely remove monster using its iterator
             }
         }
     }
@@ -258,7 +267,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         g2d.drawString(bossText, WIDTH - w - 15, 30);
     }
 
-    // --- NEW: Restored the drawHealthBar method ---
     private void drawHealthBar(Graphics2D g2d) {
         int barWidth = 200, barHeight = 20, xPos = 15, yPos = HEIGHT - barHeight - 15;
         double healthPercent = (double) player.getHealth() / player.getMaxHealth();
