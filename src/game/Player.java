@@ -9,22 +9,18 @@ import java.awt.Rectangle;
 public class Player {
     private int x, y;
     private int health;
-    private int maxHealth = 100; // Can now be modified
+    private int maxHealth = 100;
     private final int speed = 5;
     private final int char_scale = 3;
     private final double gun_scale = 0.125;
     public boolean movingUp, movingDown, movingLeft, movingRight;
     public BufferedImage image, gunImage;
     public double gunAngle = 0.0;
-
-    // --- Ammo and Reloading Attributes ---
-    private int maxAmmo = 15; // Can now be modified
+    private int maxAmmo = 15;
     private int currentAmmo;
     private boolean isReloading = false;
     private long reloadStartTime;
-    private double reloadTime = 1500; // Can now be modified
-
-    // --- Bullet Damage Attribute ---
+    private double reloadTime = 1500;
     private int bulletDamage = 5;
 
     public Player(int startX, int startY) {
@@ -62,6 +58,14 @@ public class Player {
         }
     }
 
+    // --- NEW: Method to stop all movement ---
+    public void resetMovementFlags() {
+        movingUp = false;
+        movingDown = false;
+        movingLeft = false;
+        movingRight = false;
+    }
+
     public boolean shoot() {
         if (!isReloading && currentAmmo > 0) {
             currentAmmo--;
@@ -80,7 +84,6 @@ public class Player {
         }
     }
     
-    // --- Methods for Applying Skill Card Upgrades ---
     public void increaseMaxHealth(int amount) {
         this.maxHealth += amount;
     }
@@ -91,7 +94,7 @@ public class Player {
     
     public void improveGunStats(double reloadReduction, int ammoIncrease) {
         this.reloadTime -= reloadReduction;
-        if (this.reloadTime < 100) { // Cap reload time at 0.1 seconds
+        if (this.reloadTime < 100) {
             this.reloadTime = 100;
         }
         this.maxAmmo += ammoIncrease;

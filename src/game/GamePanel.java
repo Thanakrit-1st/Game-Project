@@ -107,7 +107,11 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private void updateGame() {
         if (gameState == GameState.PLAYING) {
             player.update();
-            if (player.getHealth() <= 0) { gameState = GameState.GAME_OVER; return; }
+            if (player.getHealth() <= 0) { 
+                gameState = GameState.GAME_OVER; 
+                player.resetMovementFlags(); // <-- FIX: Reset flags on game over
+                return; 
+            }
             long timeInWave = System.currentTimeMillis() - waveStartTime;
             if (timeInWave > bossSpawnInterval && !bossSpawnedThisWave) { spawnBoss(); }
             if (System.currentTimeMillis() - lastSpawnTime > spawnCooldown) { spawnMonster(); lastSpawnTime = System.currentTimeMillis(); }
@@ -158,6 +162,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                     if (monster.isBoss() && monster.getHealth() <= 0) {
                         player.healToMax();
                         gameState = GameState.WAVE_COMPLETED;
+                        player.resetMovementFlags(); // <-- FIX: Reset flags on wave complete
                         return; 
                     }
                     break;
@@ -317,7 +322,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                 player.increaseBulletDamage(1);
                 startNextWave();
             } else if (gunMasterCardBounds.contains(e.getPoint())) {
-                player.improveGunStats(200, 5); // 200ms = 0.2s
+                player.improveGunStats(200, 5);
                 startNextWave();
             }
         }
