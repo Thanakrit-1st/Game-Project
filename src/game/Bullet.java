@@ -3,59 +3,48 @@ package src.game;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.geom.AffineTransform;
 
-/**
- * Represents a single bullet fired by the player.
- * Manages its own position, velocity, and rendering.
- */
 public class Bullet {
 
-    private double x, y; // Use double for precise position
-    private final int size = 8; // The width and height of the bullet
-    private final double speed = 15.0; // The speed at which the bullet travels
+    private double x, y;
+    private final int bulletWidth = 14;
+    private final int bulletHeight = 6;
+    private final double speed = 20.0; // Faster bullet speed
+    private final double angle;
 
-    // The velocity components (how much x and y change each frame)
     private final double velX;
     private final double velY;
 
-    /**
-     * Constructor to create a new bullet.
-     * @param startX The starting X coordinate (usually the player's center).
-     * @param startY The starting Y coordinate (usually the player's center).
-     * @param angle  The angle (in radians) at which the bullet should travel.
-     */
     public Bullet(double startX, double startY, double angle) {
-        this.x = startX;
-        this.y = startY;
+        this.angle = angle;
+        double gunTipOffset = 30;
+        this.x = startX + Math.cos(angle) * gunTipOffset - bulletWidth / 2.0;
+        this.y = startY + Math.sin(angle) * gunTipOffset - bulletHeight / 2.0;
 
-        // Calculate velocity based on the angle of the gun
-        // This uses trigonometry to determine the direction of travel
         this.velX = Math.cos(angle) * speed;
         this.velY = Math.sin(angle) * speed;
     }
 
-    /**
-     * Updates the bullet's position based on its velocity.
-     */
     public void update() {
         x += velX;
         y += velY;
     }
 
-    /**
-     * Draws the bullet on the screen.
-     * @param g2d The Graphics2D context to draw with.
-     */
     public void draw(Graphics2D g2d) {
-        g2d.setColor(Color.YELLOW); // A bright color for the bullet
-        g2d.fillOval((int)x, (int)y, size, size); // Draw a small circle
+        AffineTransform oldTransform = g2d.getTransform();
+        
+        g2d.translate(x + bulletWidth / 2.0, y + bulletHeight / 2.0);
+        g2d.rotate(angle);
+        
+        g2d.setColor(Color.YELLOW);
+        g2d.fillRect(-bulletWidth / 2, -bulletHeight / 2, bulletWidth, bulletHeight);
+        
+        g2d.setTransform(oldTransform);
     }
 
-    /**
-     * Creates a rectangle representing the bullet's bounds.
-     * Useful for collision detection or checking if it's off-screen.
-     */
     public Rectangle getBounds() {
-        return new Rectangle((int)x, (int)y, size, size);
+        return new Rectangle((int)x, (int)y, bulletWidth, bulletHeight);
     }
 }
+

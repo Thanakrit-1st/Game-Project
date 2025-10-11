@@ -17,38 +17,29 @@ import java.util.Iterator;
 public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMotionListener, MouseListener {
 
     public static final int WIDTH = 800;
-    public static final int HEIGHT = 750;
+    public static final int HEIGHT = 600;
     private final int FPS = 60;
-
     private enum GameState { START_MENU, PLAYING, GAME_OVER }
     private GameState gameState;
-
     private Thread gameThread;
     private Player player;
     private final List<Bullet> bullets = new ArrayList<>();
     private final List<Monster> monsters = new ArrayList<>();
     private final Random rand = new Random();
-
     private BufferedImage startButtonImage;
     private Rectangle startButtonBounds;
     private final double startButtonScale = 0.125;
-
-    // --- Wave and Boss System Attributes ---
     private int wave = 1;
     private long waveStartTime;
-    private final long bossSpawnInterval = 45000; // 45 seconds
+    private final long bossSpawnInterval = 45000;
     private boolean bossSpawnedThisWave = false;
-
     private long lastSpawnTime;
-    private final long spawnCooldown = 2000; // 2 seconds
+    private final long spawnCooldown = 2000;
 
     public GamePanel() {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
-        setFocusable(true);
-        requestFocus();
-        addKeyListener(this);
-        addMouseMotionListener(this);
-        addMouseListener(this);
+        setFocusable(true); requestFocus();
+        addKeyListener(this); addMouseMotionListener(this); addMouseListener(this);
         gameState = GameState.START_MENU;
         player = new Player(WIDTH / 2, HEIGHT / 2);
         loadStartButtonImage();
@@ -69,10 +60,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         }
     }
 
-    private void startGameLoop() {
-        gameThread = new Thread(this);
-        gameThread.start();
-    }
+    private void startGameLoop() { gameThread = new Thread(this); gameThread.start(); }
 
     @Override
     public void run() {
@@ -92,26 +80,13 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private void updateGame() {
         if (gameState == GameState.PLAYING) {
             player.update();
-            if (player.getHealth() <= 0) {
-                gameState = GameState.GAME_OVER;
-                return;
-            }
-
+            if (player.getHealth() <= 0) { gameState = GameState.GAME_OVER; return; }
             long timeInWave = System.currentTimeMillis() - waveStartTime;
-            if (timeInWave > bossSpawnInterval && !bossSpawnedThisWave) {
-                spawnBoss();
-            }
-
-            if (System.currentTimeMillis() - lastSpawnTime > spawnCooldown) {
-                spawnMonster();
-                lastSpawnTime = System.currentTimeMillis();
-            }
-            
+            if (timeInWave > bossSpawnInterval && !bossSpawnedThisWave) { spawnBoss(); }
+            if (System.currentTimeMillis() - lastSpawnTime > spawnCooldown) { spawnMonster(); lastSpawnTime = System.currentTimeMillis(); }
             for (Bullet b : bullets) b.update();
             for (Monster m : monsters) m.update(player);
-
             checkCollisions();
-
             bullets.removeIf(b -> !getBounds().contains(b.getBounds()));
             monsters.removeIf(m -> m.getHealth() <= 0);
         }
@@ -138,37 +113,30 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     }
 
     private void spawnBoss() {
-        // --- UPDATED: Boss base health is now 100 ---
         int bossHealth = (int)(100 * Math.pow(1.15, wave - 1));
         monsters.add(new Monster(WIDTH / 2.0, -100, bossHealth, 3.0, "/res/images/boss.png", true));
         bossSpawnedThisWave = true;
     }
 
-    // --- UPDATED: Restructured this method to prevent the crash ---
     private void checkCollisions() {
-        // --- Bullet vs Monster ---
         Iterator<Bullet> bulletIter = bullets.iterator();
         while (bulletIter.hasNext()) {
             Bullet bullet = bulletIter.next();
-            // We use a standard for-loop here to avoid concurrent modification on the monsters list
             for (int i = 0; i < monsters.size(); i++) {
                 Monster monster = monsters.get(i);
                 if (bullet.getBounds().intersects(monster.getBounds())) {
                     monster.takeDamage(5);
-                    bulletIter.remove(); // Safely remove bullet using its iterator
+                    bulletIter.remove();
                     
                     if (monster.isBoss() && monster.getHealth() <= 0) {
                         startNextWave();
-                        // IMPORTANT: Exit the entire method immediately after starting a new wave
-                        // This prevents the game from trying to check collisions on cleared lists.
                         return; 
                     }
-                    break; // Bullet is gone, no need to check other monsters
+                    break;
                 }
             }
         }
 
-        // --- Player vs Monster ---
         Iterator<Monster> monsterIter = monsters.iterator();
         while (monsterIter.hasNext()) {
             Monster monster = monsterIter.next();
@@ -178,7 +146,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                 } else {
                     player.takeDamage(10);
                 }
-                monsterIter.remove(); // Safely remove monster using its iterator
+                monsterIter.remove();
             }
         }
     }
@@ -207,7 +175,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        
         g2d.setColor(Color.BLACK);
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -242,6 +209,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             
             drawHealthBar(g2d);
             drawWaveUI(g2d);
+            drawAmmoUI(g2d);
         }
         g2d.dispose();
     }
@@ -251,10 +219,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         g2d.setFont(new Font("Consolas", Font.BOLD, 24));
         String waveText = "Wave: " + wave;
         g2d.drawString(waveText, 15, 30);
-
         long timeInWave = System.currentTimeMillis() - waveStartTime;
         long timeToBoss = (bossSpawnInterval - timeInWave) / 1000;
-        
         String bossText;
         if (bossSpawnedThisWave) {
             g2d.setColor(Color.RED);
@@ -279,6 +245,19 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         g2d.drawRect(xPos, yPos, barWidth, barHeight);
     }
 
+    private void drawAmmoUI(Graphics2D g2d) {
+        g2d.setFont(new Font("Consolas", Font.BOLD, 24));
+        
+        if (player.isReloading()) {
+            g2d.setColor(Color.RED);
+            g2d.drawString("RELOADING...", 15, HEIGHT - 50);
+        } else {
+            g2d.setColor(Color.WHITE);
+            String ammoText = "Ammo: " + player.getCurrentAmmo() + " / " + player.getMaxAmmo();
+            g2d.drawString(ammoText, 15, HEIGHT - 50);
+        }
+    }
+
     @Override
     public void mousePressed(MouseEvent e) {
         if (gameState == GameState.START_MENU || gameState == GameState.GAME_OVER) {
@@ -286,12 +265,28 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                 resetGame();
             }
         } else if (gameState == GameState.PLAYING) {
-            bullets.add(new Bullet(player.getX() + player.getWidth() / 2.0, player.getY() + player.getHeight() / 2.0, player.gunAngle));
+            if (player.shoot()) {
+                bullets.add(new Bullet(player.getX() + player.getWidth() / 2.0, player.getY() + player.getHeight() / 2.0, player.gunAngle));
+            }
         }
     }
     
     @Override public void keyTyped(KeyEvent e) {}
-    @Override public void keyPressed(KeyEvent e) { if (gameState != GameState.PLAYING) return; int c = e.getKeyCode(); if (c == KeyEvent.VK_W) player.movingUp = true; if (c == KeyEvent.VK_S) player.movingDown = true; if (c == KeyEvent.VK_A) player.movingLeft = true; if (c == KeyEvent.VK_D) player.movingRight = true; }
+    
+    @Override 
+    public void keyPressed(KeyEvent e) { 
+        if (gameState != GameState.PLAYING) return; 
+        int c = e.getKeyCode(); 
+        if (c == KeyEvent.VK_W) player.movingUp = true; 
+        if (c == KeyEvent.VK_S) player.movingDown = true; 
+        if (c == KeyEvent.VK_A) player.movingLeft = true; 
+        if (c == KeyEvent.VK_D) player.movingRight = true;
+        // --- UPDATED: Added manual reload key ---
+        if (c == KeyEvent.VK_R) {
+            player.startReload();
+        }
+    }
+    
     @Override public void keyReleased(KeyEvent e) { if (gameState != GameState.PLAYING) return; int c = e.getKeyCode(); if (c == KeyEvent.VK_W) player.movingUp = false; if (c == KeyEvent.VK_S) player.movingDown = false; if (c == KeyEvent.VK_A) player.movingLeft = false; if (c == KeyEvent.VK_D) player.movingRight = false; }
     @Override public void mouseMoved(MouseEvent e) { if (gameState == GameState.PLAYING) player.updateGunAngle(e.getX(), e.getY()); }
     @Override public void mouseDragged(MouseEvent e) { if (gameState == GameState.PLAYING) player.updateGunAngle(e.getX(), e.getY()); }
