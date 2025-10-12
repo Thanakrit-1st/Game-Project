@@ -28,7 +28,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private final Random rand = new Random();
     private BufferedImage startButtonImage;
     private Rectangle startButtonBounds;
-    private final double startButtonScale = 0.125;
     private int wave = 1;
     private long waveStartTime;
     private final long bossSpawnInterval = 45000;
@@ -36,8 +35,10 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private long lastSpawnTime;
     private final long spawnCooldown = 2000;
     
-    private BufferedImage hpCardImg, damageCardImg, gunMasterCardImg;
-    private Rectangle hpCardBounds, damageCardBounds, gunMasterCardBounds;
+    // --- Skill Card and Confirmation Attributes ---
+    private BufferedImage hpCardImg, damageCardImg, gunMasterCardImg, confirmButtonImg;
+    private Rectangle hpCardBounds, damageCardBounds, gunMasterCardBounds, confirmButtonBounds;
+    private int selectedCard = -1; // -1: none, 0: HP, 1: Damage, 2: Gun Master
 
     public GamePanel() {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -45,30 +46,21 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         addKeyListener(this); addMouseMotionListener(this); addMouseListener(this);
         gameState = GameState.START_MENU;
         player = new Player(WIDTH / 2, HEIGHT / 2);
-        loadStartButtonImage();
-        loadSkillCardImages();
+        loadUIImages();
         startGameLoop();
     }
     
-    private void loadStartButtonImage() {
+    private void loadUIImages() {
         try {
-            String path = "/res/images/click to start.png";
-            InputStream is = getClass().getResourceAsStream(path);
-            if (is == null) throw new IOException("Resource not found: " + path);
-            startButtonImage = ImageIO.read(is);
-            int btnWidth = (int)(startButtonImage.getWidth() * startButtonScale);
-            int btnHeight = (int)(startButtonImage.getHeight() * startButtonScale);
+            startButtonImage = ImageIO.read(getClass().getResourceAsStream("/res/images/start.png"));
+            int btnWidth = startButtonImage.getWidth();
+            int btnHeight = startButtonImage.getHeight();
             startButtonBounds = new Rectangle((WIDTH - btnWidth) / 2, (HEIGHT - btnHeight) / 2, btnWidth, btnHeight);
-        } catch (IOException e) {
-            System.err.println("Failed to load start button image: " + e.getMessage());
-        }
-    }
-    
-    private void loadSkillCardImages() {
-        try {
+            
             hpCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/need more hp.png"));
             damageCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/DeadlyBullet.png"));
             gunMasterCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/GunMaster.png"));
+            confirmButtonImg = ImageIO.read(getClass().getResourceAsStream("/res/images/confirm card.png"));
             
             int cardWidth = hpCardImg.getWidth();
             int cardHeight = hpCardImg.getHeight();
@@ -81,8 +73,11 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             damageCardBounds = new Rectangle(startX + cardWidth + spacing, y, cardWidth, cardHeight);
             gunMasterCardBounds = new Rectangle(startX + (cardWidth + spacing) * 2, y, cardWidth, cardHeight);
 
+            int confirmWidth = confirmButtonImg.getWidth();
+            confirmButtonBounds = new Rectangle((WIDTH - confirmWidth) / 2, y + cardHeight + 20, confirmWidth, confirmButtonImg.getHeight());
+
         } catch (Exception e) {
-            System.err.println("Failed to load one or more skill card images.");
+            System.err.println("Failed to load one or more UI images.");
             e.printStackTrace();
         }
     }
@@ -107,11 +102,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private void updateGame() {
         if (gameState == GameState.PLAYING) {
             player.update();
-            if (player.getHealth() <= 0) { 
-                gameState = GameState.GAME_OVER; 
-                player.resetMovementFlags(); // <-- FIX: Reset flags on game over
-                return; 
-            }
+            if (player.getHealth() <= 0) { gameState = GameState.GAME_OVER; player.resetMovementFlags(); return; }
             long timeInWave = System.currentTimeMillis() - waveStartTime;
             if (timeInWave > bossSpawnInterval && !bossSpawnedThisWave) { spawnBoss(); }
             if (System.currentTimeMillis() - lastSpawnTime > spawnCooldown) { spawnMonster(); lastSpawnTime = System.currentTimeMillis(); }
@@ -127,20 +118,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         double healthMultiplier = Math.pow(1.15, wave - 1);
         int m1Health = (int)(20 * healthMultiplier);
         int m2Health = (int)(10 * healthMultiplier);
-        
         int spawnSide = rand.nextInt(4); double x = 0, y = 0;
-        switch (spawnSide) {
-            case 0: x = rand.nextInt(WIDTH); y = -64; break;
-            case 1: x = WIDTH; y = rand.nextInt(HEIGHT); break;
-            case 2: x = rand.nextInt(WIDTH); y = HEIGHT; break;
-            case 3: x = -64; y = rand.nextInt(HEIGHT); break;
-        }
-
-        if (rand.nextBoolean()) {
-            monsters.add(new Monster(x, y, m1Health, 3.0, "/res/images/Monster1.png", false));
-        } else {
-            monsters.add(new Monster(x, y, m2Health, 6.0, "/res/images/Monster2.png", false));
-        }
+        switch (spawnSide) { case 0: x = rand.nextInt(WIDTH); y = -64; break; case 1: x = WIDTH; y = rand.nextInt(HEIGHT); break; case 2: x = rand.nextInt(WIDTH); y = HEIGHT; break; case 3: x = -64; y = rand.nextInt(HEIGHT); break; }
+        if (rand.nextBoolean()) { monsters.add(new Monster(x, y, m1Health, 3.0, "/res/images/Monster1.png", false)); } else { monsters.add(new Monster(x, y, m2Health, 6.0, "/res/images/Monster2.png", false)); }
     }
 
     private void spawnBoss() {
@@ -153,16 +133,14 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         Iterator<Bullet> bulletIter = bullets.iterator();
         while (bulletIter.hasNext()) {
             Bullet bullet = bulletIter.next();
-            for (int i = 0; i < monsters.size(); i++) {
-                Monster monster = monsters.get(i);
+            for (Monster monster : monsters) {
                 if (bullet.getBounds().intersects(monster.getBounds())) {
                     monster.takeDamage(bullet.getDamage());
                     bulletIter.remove();
-                    
                     if (monster.isBoss() && monster.getHealth() <= 0) {
                         player.healToMax();
                         gameState = GameState.WAVE_COMPLETED;
-                        player.resetMovementFlags(); // <-- FIX: Reset flags on wave complete
+                        player.resetMovementFlags();
                         return; 
                     }
                     break;
@@ -173,11 +151,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         while (monsterIter.hasNext()) {
             Monster monster = monsterIter.next();
             if (player.getBounds().intersects(monster.getBounds())) {
-                if (monster.isBoss()) {
-                    player.takeDamage(player.getMaxHealth() * 2);
-                } else {
-                    player.takeDamage(10);
-                }
+                if (monster.isBoss()) { player.takeDamage(player.getMaxHealth() * 2); } else { player.takeDamage(10); }
                 monsterIter.remove();
             }
         }
@@ -189,6 +163,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         bossSpawnedThisWave = false;
         bullets.clear();
         monsters.clear();
+        selectedCard = -1; // Reset selection
         gameState = GameState.PLAYING;
     }
 
@@ -198,6 +173,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         bullets.clear();
         wave = 1;
         bossSpawnedThisWave = false;
+        selectedCard = -1;
         gameState = GameState.PLAYING;
         waveStartTime = System.currentTimeMillis();
         lastSpawnTime = waveStartTime;
@@ -212,20 +188,13 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
 
         if (gameState == GameState.START_MENU || gameState == GameState.GAME_OVER) {
-            if (startButtonImage != null) {
-                g2d.drawImage(startButtonImage, startButtonBounds.x, startButtonBounds.y, startButtonBounds.width, startButtonBounds.height, null);
-            }
+            if (startButtonImage != null) { g2d.drawImage(startButtonImage, startButtonBounds.x, startButtonBounds.y, startButtonBounds.width, startButtonBounds.height, null); }
             if (gameState == GameState.GAME_OVER) {
-                g2d.setColor(Color.RED);
-                g2d.setFont(new Font("Consolas", Font.BOLD, 72));
-                String msg = "GAME OVER";
-                int w = g2d.getFontMetrics().stringWidth(msg);
+                g2d.setColor(Color.RED); g2d.setFont(new Font("Consolas", Font.BOLD, 72));
+                String msg = "GAME OVER"; int w = g2d.getFontMetrics().stringWidth(msg);
                 g2d.drawString(msg, (WIDTH - w) / 2, HEIGHT / 2 - 100);
-                
-                g2d.setColor(Color.WHITE);
-                g2d.setFont(new Font("Consolas", Font.BOLD, 36));
-                String waveMsg = "You reached wave " + wave;
-                w = g2d.getFontMetrics().stringWidth(waveMsg);
+                g2d.setColor(Color.WHITE); g2d.setFont(new Font("Consolas", Font.BOLD, 36));
+                String waveMsg = "You reached wave " + wave; w = g2d.getFontMetrics().stringWidth(waveMsg);
                 g2d.drawString(waveMsg, (WIDTH - w) / 2, HEIGHT / 2 - 50);
             }
         } else if (gameState == GameState.PLAYING) {
@@ -249,8 +218,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     }
     
     private void drawSkillCardScreen(Graphics2D g2d) {
-        g2d.setColor(Color.WHITE);
-        g2d.setFont(new Font("Consolas", Font.BOLD, 48));
+        g2d.setColor(Color.WHITE); g2d.setFont(new Font("Consolas", Font.BOLD, 48));
         String title = "Choose Your Upgrade!";
         int w = g2d.getFontMetrics().stringWidth(title);
         g2d.drawString(title, (WIDTH - w) / 2, 100);
@@ -258,6 +226,16 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         if (hpCardImg != null) g2d.drawImage(hpCardImg, hpCardBounds.x, hpCardBounds.y, null);
         if (damageCardImg != null) g2d.drawImage(damageCardImg, damageCardBounds.x, damageCardBounds.y, null);
         if (gunMasterCardImg != null) g2d.drawImage(gunMasterCardImg, gunMasterCardBounds.x, gunMasterCardBounds.y, null);
+
+        if (selectedCard != -1) {
+            g2d.setColor(Color.YELLOW);
+            g2d.setStroke(new BasicStroke(4));
+            if (selectedCard == 0) g2d.drawRect(hpCardBounds.x, hpCardBounds.y, hpCardBounds.width, hpCardBounds.height);
+            if (selectedCard == 1) g2d.drawRect(damageCardBounds.x, damageCardBounds.y, damageCardBounds.width, damageCardBounds.height);
+            if (selectedCard == 2) g2d.drawRect(gunMasterCardBounds.x, gunMasterCardBounds.y, gunMasterCardBounds.width, gunMasterCardBounds.height);
+            
+            if (confirmButtonImg != null) g2d.drawImage(confirmButtonImg, confirmButtonBounds.x, confirmButtonBounds.y, null);
+        }
     }
 
     private void drawWaveUI(Graphics2D g2d) {
@@ -265,8 +243,10 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         g2d.setFont(new Font("Consolas", Font.BOLD, 24));
         String waveText = "Wave: " + wave;
         g2d.drawString(waveText, 15, 30);
+
         long timeInWave = System.currentTimeMillis() - waveStartTime;
         long timeToBoss = (bossSpawnInterval - timeInWave) / 1000;
+        
         String bossText;
         if (bossSpawnedThisWave) {
             g2d.setColor(Color.RED);
@@ -307,37 +287,27 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     @Override
     public void mousePressed(MouseEvent e) {
         if (gameState == GameState.START_MENU || gameState == GameState.GAME_OVER) {
-            if (startButtonBounds != null && startButtonBounds.contains(e.getPoint())) {
-                resetGame();
-            }
+            if (startButtonBounds != null && startButtonBounds.contains(e.getPoint())) { resetGame(); }
         } else if (gameState == GameState.PLAYING) {
-            if (player.shoot()) {
-                bullets.add(new Bullet(player.getX() + player.getWidth() / 2.0, player.getY() + player.getHeight() / 2.0, player.gunAngle, player.getBulletDamage()));
-            }
+            if (player.shoot()) { bullets.add(new Bullet(player.getX() + player.getWidth() / 2.0, player.getY() + player.getHeight() / 2.0, player.gunAngle, player.getBulletDamage())); }
         } else if (gameState == GameState.WAVE_COMPLETED) {
-            if (hpCardBounds.contains(e.getPoint())) {
-                player.increaseMaxHealth(10);
-                startNextWave();
-            } else if (damageCardBounds.contains(e.getPoint())) {
-                player.increaseBulletDamage(1);
-                startNextWave();
-            } else if (gunMasterCardBounds.contains(e.getPoint())) {
-                player.improveGunStats(200, 5);
+            if (hpCardBounds.contains(e.getPoint())) { selectedCard = 0; }
+            else if (damageCardBounds.contains(e.getPoint())) { selectedCard = 1; }
+            else if (gunMasterCardBounds.contains(e.getPoint())) { selectedCard = 2; }
+            
+            if (selectedCard != -1 && confirmButtonBounds.contains(e.getPoint())) {
+                switch (selectedCard) {
+                    case 0: player.increaseMaxHealth(10); break;
+                    case 1: player.increaseBulletDamage(1); break;
+                    case 2: player.improveGunStats(200, 5); break;
+                }
                 startNextWave();
             }
         }
     }
     
     @Override public void keyTyped(KeyEvent e) {}
-    @Override public void keyPressed(KeyEvent e) { 
-        if (gameState != GameState.PLAYING) return; 
-        int c = e.getKeyCode(); 
-        if (c == KeyEvent.VK_W) player.movingUp = true; 
-        if (c == KeyEvent.VK_S) player.movingDown = true; 
-        if (c == KeyEvent.VK_A) player.movingLeft = true; 
-        if (c == KeyEvent.VK_D) player.movingRight = true;
-        if (c == KeyEvent.VK_R) player.startReload();
-    }
+    @Override public void keyPressed(KeyEvent e) { if (gameState != GameState.PLAYING) return; int c = e.getKeyCode(); if (c == KeyEvent.VK_W) player.movingUp = true; if (c == KeyEvent.VK_S) player.movingDown = true; if (c == KeyEvent.VK_A) player.movingLeft = true; if (c == KeyEvent.VK_D) player.movingRight = true; if (c == KeyEvent.VK_R) player.startReload(); }
     @Override public void keyReleased(KeyEvent e) { if (gameState != GameState.PLAYING) return; int c = e.getKeyCode(); if (c == KeyEvent.VK_W) player.movingUp = false; if (c == KeyEvent.VK_S) player.movingDown = false; if (c == KeyEvent.VK_A) player.movingLeft = false; if (c == KeyEvent.VK_D) player.movingRight = false; }
     @Override public void mouseMoved(MouseEvent e) { if (gameState == GameState.PLAYING) player.updateGunAngle(e.getX(), e.getY()); }
     @Override public void mouseDragged(MouseEvent e) { if (gameState == GameState.PLAYING) player.updateGunAngle(e.getX(), e.getY()); }
