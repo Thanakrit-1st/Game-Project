@@ -58,7 +58,6 @@ public class Player {
         }
     }
 
-    // --- NEW: Method to stop all movement ---
     public void resetMovementFlags() {
         movingUp = false;
         movingDown = false;
@@ -115,7 +114,25 @@ public class Player {
         if (this.health < 0) this.health = 0;
     }
 
-    public Rectangle getBounds() { return new Rectangle(x, y, getWidth(), getHeight()); }
+    /**
+     * UPDATED: Returns a smaller, centered hitbox for more accurate collisions.
+     */
+    // --- FIX: Removed incorrect @Override annotation ---
+    public Rectangle getBounds() {
+        int fullWidth = getWidth();
+        int fullHeight = getHeight();
+
+        // Make hitbox 50% of the width and 80% of the height
+        int hitboxWidth = (int)(fullWidth * 0.5);
+        int hitboxHeight = (int)(fullHeight * 0.8);
+
+        // Center the smaller hitbox inside the full image area
+        int hitboxX = x + (fullWidth - hitboxWidth) / 2;
+        int hitboxY = y + (fullHeight - hitboxHeight) / 2;
+
+        return new Rectangle(hitboxX, hitboxY, hitboxWidth, hitboxHeight);
+    }
+    
     public int getX() { return x; }
     public int getY() { return y; }
     public int getWidth() { return (image != null ? image.getWidth() : 0) * char_scale; }

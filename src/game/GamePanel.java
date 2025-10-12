@@ -34,10 +34,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private long lastSpawnTime;
     private final long spawnCooldown = 2000;
     
-    // --- Skill Card and Confirmation Attributes ---
     private BufferedImage hpCardImg, damageCardImg, gunMasterCardImg;
     private Rectangle hpCardBounds, damageCardBounds, gunMasterCardBounds, confirmButtonBounds;
-    private int selectedCard = -1; // -1: none, 0: HP, 1: Damage, 2: Gun Master
+    private int selectedCard = -1;
 
     public GamePanel() {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -126,38 +125,37 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         bossSpawnedThisWave = true;
     }
 
-    // --- UPDATED: This method is now safer against crashes ---
+    // --- FIX: Rewritten collision logic to prevent crashes ---
     private void checkCollisions() {
         boolean bossIsDead = false;
 
-        // Use iterators for all list modifications to prevent crashes
         Iterator<Monster> monsterIter = monsters.iterator();
         while (monsterIter.hasNext()) {
             Monster monster = monsterIter.next();
 
-            // Player vs Monster Collision
+            // Check Player vs Monster collision first
             if (player.getBounds().intersects(monster.getBounds())) {
                 if (monster.isBoss()) {
                     player.takeDamage(player.getMaxHealth() * 2);
                 } else {
                     player.takeDamage(10);
                 }
-                monsterIter.remove(); // Safely remove the monster
-                continue; // Monster is gone, continue to the next one
+                monsterIter.remove(); // Safely remove monster
+                continue; // Skip to next monster as this one is gone
             }
 
-            // Bullet vs Monster Collision
+            // Check Bullet vs Monster collision
             Iterator<Bullet> bulletIter = bullets.iterator();
             while (bulletIter.hasNext()) {
                 Bullet bullet = bulletIter.next();
                 if (bullet.getBounds().intersects(monster.getBounds())) {
                     monster.takeDamage(bullet.getDamage());
-                    bulletIter.remove(); // Safely remove the bullet
-                    break; // One bullet hits one monster, then stop checking this bullet
+                    bulletIter.remove(); // Safely remove bullet
+                    break; // Bullet is gone, stop checking it against other monsters
                 }
             }
-            
-            // Check if monster died from bullet damage
+
+            // Check if the monster died from the bullet hit
             if (monster.getHealth() <= 0) {
                 if (monster.isBoss()) {
                     bossIsDead = true;
@@ -166,7 +164,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             }
         }
 
-        // After all collision checks, if the boss was defeated, change game state
+        // If a boss died during the loop, transition to the next state
         if (bossIsDead) {
             player.healToMax();
             gameState = GameState.WAVE_COMPLETED;
@@ -180,7 +178,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         bossSpawnedThisWave = false;
         bullets.clear();
         monsters.clear();
-        selectedCard = -1; // Reset selection
+        selectedCard = -1;
         gameState = GameState.PLAYING;
     }
 
