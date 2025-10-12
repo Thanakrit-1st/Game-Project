@@ -99,8 +99,12 @@ public class Player {
         this.maxAmmo += ammoIncrease;
     }
     
-    public void healToMax() {
-        this.health = this.maxHealth;
+    // --- UPDATED: Heals for a specific amount, capped at max health ---
+    public void heal(int amount) {
+        this.health += amount;
+        if (this.health > this.maxHealth) {
+            this.health = this.maxHealth;
+        }
     }
 
     public void updateGunAngle(int mouseX, int mouseY) {
@@ -114,22 +118,13 @@ public class Player {
         if (this.health < 0) this.health = 0;
     }
 
-    /**
-     * UPDATED: Returns a smaller, centered hitbox for more accurate collisions.
-     */
-    // --- FIX: Removed incorrect @Override annotation ---
     public Rectangle getBounds() {
         int fullWidth = getWidth();
         int fullHeight = getHeight();
-
-        // Make hitbox 50% of the width and 80% of the height
         int hitboxWidth = (int)(fullWidth * 0.5);
         int hitboxHeight = (int)(fullHeight * 0.8);
-
-        // Center the smaller hitbox inside the full image area
         int hitboxX = x + (fullWidth - hitboxWidth) / 2;
         int hitboxY = y + (fullHeight - hitboxHeight) / 2;
-
         return new Rectangle(hitboxX, hitboxY, hitboxWidth, hitboxHeight);
     }
     

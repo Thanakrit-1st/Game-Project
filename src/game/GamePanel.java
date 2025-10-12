@@ -125,48 +125,34 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         bossSpawnedThisWave = true;
     }
 
-    // --- FIX: Rewritten collision logic to prevent crashes ---
     private void checkCollisions() {
         boolean bossIsDead = false;
-
         Iterator<Monster> monsterIter = monsters.iterator();
         while (monsterIter.hasNext()) {
             Monster monster = monsterIter.next();
-
-            // Check Player vs Monster collision first
             if (player.getBounds().intersects(monster.getBounds())) {
-                if (monster.isBoss()) {
-                    player.takeDamage(player.getMaxHealth() * 2);
-                } else {
-                    player.takeDamage(10);
-                }
-                monsterIter.remove(); // Safely remove monster
-                continue; // Skip to next monster as this one is gone
+                if (monster.isBoss()) { player.takeDamage(player.getMaxHealth() * 2); } else { player.takeDamage(10); }
+                monsterIter.remove();
+                continue;
             }
-
-            // Check Bullet vs Monster collision
             Iterator<Bullet> bulletIter = bullets.iterator();
             while (bulletIter.hasNext()) {
                 Bullet bullet = bulletIter.next();
                 if (bullet.getBounds().intersects(monster.getBounds())) {
                     monster.takeDamage(bullet.getDamage());
-                    bulletIter.remove(); // Safely remove bullet
-                    break; // Bullet is gone, stop checking it against other monsters
+                    bulletIter.remove();
+                    break;
                 }
             }
-
-            // Check if the monster died from the bullet hit
             if (monster.getHealth() <= 0) {
                 if (monster.isBoss()) {
                     bossIsDead = true;
                 }
-                monsterIter.remove(); // Safely remove dead monster
+                monsterIter.remove();
             }
         }
-
-        // If a boss died during the loop, transition to the next state
         if (bossIsDead) {
-            player.healToMax();
+            // --- UPDATED: No longer heals instantly ---
             gameState = GameState.WAVE_COMPLETED;
             player.resetMovementFlags();
         }
@@ -316,11 +302,23 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             else if (gunMasterCardBounds.contains(e.getPoint())) { selectedCard = 2; }
             
             if (selectedCard != -1 && confirmButtonBounds.contains(e.getPoint())) {
+                // --- UPDATED: Healing logic is now here ---
+                int healAmount = (int)(player.getMaxHealth() * 0.40);
+
                 switch (selectedCard) {
-                    case 0: player.increaseMaxHealth(10); break;
-                    case 1: player.increaseBulletDamage(1); break;
-                    case 2: player.improveGunStats(200, 5); break;
+                    case 0: 
+                        player.increaseMaxHealth(10); 
+                        // Recalculate heal amount based on new max HP
+                        healAmount = (int)(player.getMaxHealth() * 0.40);
+                        break;
+                    case 1: 
+                        player.increaseBulletDamage(1); 
+                        break;
+                    case 2: 
+                        player.improveGunStats(200, 5); 
+                        break;
                 }
+                player.heal(healAmount);
                 startNextWave();
             }
         }
