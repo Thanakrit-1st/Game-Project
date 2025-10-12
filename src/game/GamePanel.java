@@ -16,8 +16,8 @@ import java.util.Iterator;
 
 public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMotionListener, MouseListener {
 
-    public static final int WIDTH = 800;
-    public static final int HEIGHT = 600;
+    public static final int WIDTH = 850;
+    public static final int HEIGHT = 750;
     private final int FPS = 60;
     private enum GameState { START_MENU, PLAYING, GAME_OVER, WAVE_COMPLETED }
     private GameState gameState;
