@@ -13,16 +13,18 @@ public class Monster {
     private int health;
     private final double speed;
     private BufferedImage image;
-    private final double scale = 1.5; // Smaller scale
+    private final double scale = 1.5;
     private int width, height;
     private final boolean isBoss;
+    private final boolean isMysterious;
 
-    public Monster(double startX, double startY, int health, double speed, String imagePath, boolean isBoss) {
+    public Monster(double startX, double startY, int health, double speed, String imagePath, boolean isBoss, boolean isMysterious) {
         this.x = startX;
         this.y = startY;
         this.health = health;
         this.speed = speed;
         this.isBoss = isBoss;
+        this.isMysterious = isMysterious;
         loadImage(imagePath);
 
         double currentScale = isBoss ? scale + 1.0 : scale;
@@ -45,7 +47,9 @@ public class Monster {
             System.err.println("Failed to load monster image: " + e.getMessage());
             image = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
             Graphics2D g = image.createGraphics();
-            g.setColor(isBoss ? Color.MAGENTA : new Color(128, 0, 128));
+            if (isBoss) g.setColor(Color.MAGENTA);
+            else if (isMysterious) g.setColor(Color.CYAN); // Fallback color for Mysterious
+            else g.setColor(new Color(128, 0, 128));
             g.fillRect(0, 0, 32, 32);
             g.dispose();
         }
@@ -74,16 +78,9 @@ public class Monster {
         this.health -= amount;
     }
 
-    public int getHealth() {
-        return health;
-    }
-    
-    public boolean isBoss() {
-        return isBoss;
-    }
-
-    public Rectangle getBounds() {
-        return new Rectangle((int)x, (int)y, width, height);
-    }
+    public int getHealth() { return health; }
+    public boolean isBoss() { return isBoss; }
+    public boolean isMysterious() { return isMysterious; }
+    public Rectangle getBounds() { return new Rectangle((int)x, (int)y, width, height); }
 }
 

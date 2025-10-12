@@ -16,8 +16,8 @@ import java.util.Iterator;
 
 public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMotionListener, MouseListener {
 
-    public static final int WIDTH = 850;
-    public static final int HEIGHT = 750;
+    public static final int WIDTH = 800;
+    public static final int HEIGHT = 600;
     private final int FPS = 60;
     private enum GameState { START_MENU, PLAYING, GAME_OVER, WAVE_COMPLETED }
     private GameState gameState;
@@ -111,17 +111,37 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     }
 
     private void spawnMonster() {
+        if (wave >= 3 && rand.nextInt(100) < 10) {
+            spawnMysterious();
+            return;
+        }
+
         double healthMultiplier = Math.pow(1.15, wave - 1);
         int m1Health = (int)(20 * healthMultiplier);
         int m2Health = (int)(10 * healthMultiplier);
         int spawnSide = rand.nextInt(4); double x = 0, y = 0;
         switch (spawnSide) { case 0: x = rand.nextInt(WIDTH); y = -64; break; case 1: x = WIDTH; y = rand.nextInt(HEIGHT); break; case 2: x = rand.nextInt(WIDTH); y = HEIGHT; break; case 3: x = -64; y = rand.nextInt(HEIGHT); break; }
-        if (rand.nextBoolean()) { monsters.add(new Monster(x, y, m1Health, 3.0, "/res/images/Monster1.png", false)); } else { monsters.add(new Monster(x, y, m2Health, 6.0, "/res/images/Monster2.png", false)); }
+        
+        if (rand.nextBoolean()) { 
+            monsters.add(new Monster(x, y, m1Health, 3.0, "/res/images/Monster1.png", false, false)); 
+        } else { 
+            monsters.add(new Monster(x, y, m2Health, 6.0, "/res/images/Monster2.png", false, false)); 
+        }
+    }
+    
+    private void spawnMysterious() {
+        int health = 1;
+        double speed = 7.5;
+        
+        int spawnSide = rand.nextInt(4); double x = 0, y = 0;
+        switch (spawnSide) { case 0: x = rand.nextInt(WIDTH); y = -64; break; case 1: x = WIDTH; y = rand.nextInt(HEIGHT); break; case 2: x = rand.nextInt(WIDTH); y = HEIGHT; break; case 3: x = -64; y = rand.nextInt(HEIGHT); break; }
+        
+        monsters.add(new Monster(x, y, health, speed, "/res/images/Mysterious.png", false, true));
     }
 
     private void spawnBoss() {
         int bossHealth = (int)(100 * Math.pow(1.15, wave - 1));
-        monsters.add(new Monster(WIDTH / 2.0, -100, bossHealth, 3.0, "/res/images/boss.png", true));
+        monsters.add(new Monster(WIDTH / 2.0, -100, bossHealth, 3.0, "/res/images/boss.png", true, false));
         bossSpawnedThisWave = true;
     }
 
@@ -130,11 +150,20 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         Iterator<Monster> monsterIter = monsters.iterator();
         while (monsterIter.hasNext()) {
             Monster monster = monsterIter.next();
+            
             if (player.getBounds().intersects(monster.getBounds())) {
-                if (monster.isBoss()) { player.takeDamage(player.getMaxHealth() * 2); } else { player.takeDamage(10); }
+                if (monster.isBoss()) { 
+                    player.takeDamage(player.getMaxHealth() * 2); 
+                } else if (monster.isMysterious()) {
+                    int damage = (int) (player.getMaxHealth() * 0.25);
+                    player.takeDamage(damage);
+                } else { 
+                    player.takeDamage(10); 
+                }
                 monsterIter.remove();
                 continue;
             }
+
             Iterator<Bullet> bulletIter = bullets.iterator();
             while (bulletIter.hasNext()) {
                 Bullet bullet = bulletIter.next();
@@ -152,7 +181,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             }
         }
         if (bossIsDead) {
-            // --- UPDATED: No longer heals instantly ---
             gameState = GameState.WAVE_COMPLETED;
             player.resetMovementFlags();
         }
@@ -189,7 +217,17 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
 
         if (gameState == GameState.START_MENU || gameState == GameState.GAME_OVER) {
+            if (gameState == GameState.START_MENU) {
+                g2d.setColor(Color.WHITE);
+                g2d.setFont(new Font("Consolas", Font.BOLD, 72));
+                String title = "Escape the Death";
+                FontMetrics fm = g2d.getFontMetrics();
+                int titleWidth = fm.stringWidth(title);
+                g2d.drawString(title, (WIDTH - titleWidth) / 2, HEIGHT / 2 - 100);
+            }
+            
             drawButton(g2d, startButtonBounds, gameState == GameState.START_MENU ? "START" : "RESTART");
+
             if (gameState == GameState.GAME_OVER) {
                 g2d.setColor(Color.RED); g2d.setFont(new Font("Consolas", Font.BOLD, 72));
                 String msg = "GAME OVER"; int w = g2d.getFontMetrics().stringWidth(msg);
@@ -302,13 +340,10 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             else if (gunMasterCardBounds.contains(e.getPoint())) { selectedCard = 2; }
             
             if (selectedCard != -1 && confirmButtonBounds.contains(e.getPoint())) {
-                // --- UPDATED: Healing logic is now here ---
                 int healAmount = (int)(player.getMaxHealth() * 0.40);
-
                 switch (selectedCard) {
                     case 0: 
                         player.increaseMaxHealth(10); 
-                        // Recalculate heal amount based on new max HP
                         healAmount = (int)(player.getMaxHealth() * 0.40);
                         break;
                     case 1: 
@@ -333,7 +368,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     @Override public void mouseEntered(MouseEvent e) {} @Override public void mouseExited(MouseEvent e) {}
     
     public static void main(String[] args) {
-        JFrame window = new JFrame("Wave Survival Game");
+        JFrame window = new JFrame("Escape the Death");
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         window.setResizable(false);
         window.add(new GamePanel());
