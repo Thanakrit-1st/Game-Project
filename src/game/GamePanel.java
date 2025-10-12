@@ -26,7 +26,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private final List<Bullet> bullets = new ArrayList<>();
     private final List<Monster> monsters = new ArrayList<>();
     private final Random rand = new Random();
-    private BufferedImage startButtonImage;
     private Rectangle startButtonBounds;
     private int wave = 1;
     private long waveStartTime;
@@ -36,7 +35,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private final long spawnCooldown = 2000;
     
     // --- Skill Card and Confirmation Attributes ---
-    private BufferedImage hpCardImg, damageCardImg, gunMasterCardImg, confirmButtonImg;
+    private BufferedImage hpCardImg, damageCardImg, gunMasterCardImg;
     private Rectangle hpCardBounds, damageCardBounds, gunMasterCardBounds, confirmButtonBounds;
     private int selectedCard = -1; // -1: none, 0: HP, 1: Damage, 2: Gun Master
 
@@ -52,15 +51,13 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     
     private void loadUIImages() {
         try {
-            startButtonImage = ImageIO.read(getClass().getResourceAsStream("/res/images/start.png"));
-            int btnWidth = startButtonImage.getWidth();
-            int btnHeight = startButtonImage.getHeight();
+            int btnWidth = 200;
+            int btnHeight = 60;
             startButtonBounds = new Rectangle((WIDTH - btnWidth) / 2, (HEIGHT - btnHeight) / 2, btnWidth, btnHeight);
             
             hpCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/need more hp.png"));
             damageCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/DeadlyBullet.png"));
             gunMasterCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/GunMaster.png"));
-            confirmButtonImg = ImageIO.read(getClass().getResourceAsStream("/res/images/confirm card.png"));
             
             int cardWidth = hpCardImg.getWidth();
             int cardHeight = hpCardImg.getHeight();
@@ -73,8 +70,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             damageCardBounds = new Rectangle(startX + cardWidth + spacing, y, cardWidth, cardHeight);
             gunMasterCardBounds = new Rectangle(startX + (cardWidth + spacing) * 2, y, cardWidth, cardHeight);
 
-            int confirmWidth = confirmButtonImg.getWidth();
-            confirmButtonBounds = new Rectangle((WIDTH - confirmWidth) / 2, y + cardHeight + 20, confirmWidth, confirmButtonImg.getHeight());
+            int confirmWidth = 180;
+            int confirmHeight = 50;
+            confirmButtonBounds = new Rectangle((WIDTH - confirmWidth) / 2, y + cardHeight + 20, confirmWidth, confirmHeight);
 
         } catch (Exception e) {
             System.err.println("Failed to load one or more UI images.");
@@ -110,7 +108,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             for (Monster m : monsters) m.update(player);
             checkCollisions();
             bullets.removeIf(b -> !getBounds().contains(b.getBounds()));
-            monsters.removeIf(m -> m.getHealth() <= 0);
         }
     }
 
@@ -129,31 +126,51 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         bossSpawnedThisWave = true;
     }
 
+    // --- UPDATED: This method is now safer against crashes ---
     private void checkCollisions() {
-        Iterator<Bullet> bulletIter = bullets.iterator();
-        while (bulletIter.hasNext()) {
-            Bullet bullet = bulletIter.next();
-            for (Monster monster : monsters) {
-                if (bullet.getBounds().intersects(monster.getBounds())) {
-                    monster.takeDamage(bullet.getDamage());
-                    bulletIter.remove();
-                    if (monster.isBoss() && monster.getHealth() <= 0) {
-                        player.healToMax();
-                        gameState = GameState.WAVE_COMPLETED;
-                        player.resetMovementFlags();
-                        return; 
-                    }
-                    break;
-                }
-            }
-        }
+        boolean bossIsDead = false;
+
+        // Use iterators for all list modifications to prevent crashes
         Iterator<Monster> monsterIter = monsters.iterator();
         while (monsterIter.hasNext()) {
             Monster monster = monsterIter.next();
+
+            // Player vs Monster Collision
             if (player.getBounds().intersects(monster.getBounds())) {
-                if (monster.isBoss()) { player.takeDamage(player.getMaxHealth() * 2); } else { player.takeDamage(10); }
-                monsterIter.remove();
+                if (monster.isBoss()) {
+                    player.takeDamage(player.getMaxHealth() * 2);
+                } else {
+                    player.takeDamage(10);
+                }
+                monsterIter.remove(); // Safely remove the monster
+                continue; // Monster is gone, continue to the next one
             }
+
+            // Bullet vs Monster Collision
+            Iterator<Bullet> bulletIter = bullets.iterator();
+            while (bulletIter.hasNext()) {
+                Bullet bullet = bulletIter.next();
+                if (bullet.getBounds().intersects(monster.getBounds())) {
+                    monster.takeDamage(bullet.getDamage());
+                    bulletIter.remove(); // Safely remove the bullet
+                    break; // One bullet hits one monster, then stop checking this bullet
+                }
+            }
+            
+            // Check if monster died from bullet damage
+            if (monster.getHealth() <= 0) {
+                if (monster.isBoss()) {
+                    bossIsDead = true;
+                }
+                monsterIter.remove(); // Safely remove dead monster
+            }
+        }
+
+        // After all collision checks, if the boss was defeated, change game state
+        if (bossIsDead) {
+            player.healToMax();
+            gameState = GameState.WAVE_COMPLETED;
+            player.resetMovementFlags();
         }
     }
 
@@ -188,7 +205,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
 
         if (gameState == GameState.START_MENU || gameState == GameState.GAME_OVER) {
-            if (startButtonImage != null) { g2d.drawImage(startButtonImage, startButtonBounds.x, startButtonBounds.y, startButtonBounds.width, startButtonBounds.height, null); }
+            drawButton(g2d, startButtonBounds, gameState == GameState.START_MENU ? "START" : "RESTART");
             if (gameState == GameState.GAME_OVER) {
                 g2d.setColor(Color.RED); g2d.setFont(new Font("Consolas", Font.BOLD, 72));
                 String msg = "GAME OVER"; int w = g2d.getFontMetrics().stringWidth(msg);
@@ -208,7 +225,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                 g2d.setTransform(old);
             }
             for (Bullet b : bullets) b.draw(g2d);
-            drawHealthBar(g2d);
+            drawHealthUI(g2d);
             drawWaveUI(g2d);
             drawAmmoUI(g2d);
         } else if (gameState == GameState.WAVE_COMPLETED) {
@@ -234,7 +251,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             if (selectedCard == 1) g2d.drawRect(damageCardBounds.x, damageCardBounds.y, damageCardBounds.width, damageCardBounds.height);
             if (selectedCard == 2) g2d.drawRect(gunMasterCardBounds.x, gunMasterCardBounds.y, gunMasterCardBounds.width, gunMasterCardBounds.height);
             
-            if (confirmButtonImg != null) g2d.drawImage(confirmButtonImg, confirmButtonBounds.x, confirmButtonBounds.y, null);
+            drawButton(g2d, confirmButtonBounds, "Confirm");
         }
     }
 
@@ -243,10 +260,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         g2d.setFont(new Font("Consolas", Font.BOLD, 24));
         String waveText = "Wave: " + wave;
         g2d.drawString(waveText, 15, 30);
-
         long timeInWave = System.currentTimeMillis() - waveStartTime;
         long timeToBoss = (bossSpawnInterval - timeInWave) / 1000;
-        
         String bossText;
         if (bossSpawnedThisWave) {
             g2d.setColor(Color.RED);
@@ -259,21 +274,15 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         g2d.drawString(bossText, WIDTH - w - 15, 30);
     }
 
-    private void drawHealthBar(Graphics2D g2d) {
-        int barWidth = 200, barHeight = 20, xPos = 15, yPos = HEIGHT - barHeight - 15;
-        double healthPercent = (double) player.getHealth() / player.getMaxHealth();
-        int currentHealthWidth = (int) (barWidth * healthPercent);
-        g2d.setColor(Color.DARK_GRAY);
-        g2d.fillRect(xPos, yPos, barWidth, barHeight);
+    private void drawHealthUI(Graphics2D g2d) {
+        g2d.setFont(new Font("Consolas", Font.BOLD, 24));
         g2d.setColor(Color.RED);
-        g2d.fillRect(xPos, yPos, currentHealthWidth, barHeight);
-        g2d.setColor(Color.WHITE);
-        g2d.drawRect(xPos, yPos, barWidth, barHeight);
+        String healthText = "HP: " + player.getHealth() + " / " + player.getMaxHealth();
+        g2d.drawString(healthText, 15, HEIGHT - 20);
     }
 
     private void drawAmmoUI(Graphics2D g2d) {
         g2d.setFont(new Font("Consolas", Font.BOLD, 24));
-        
         if (player.isReloading()) {
             g2d.setColor(Color.RED);
             g2d.drawString("RELOADING...", 15, HEIGHT - 50);
@@ -282,6 +291,19 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             String ammoText = "Ammo: " + player.getCurrentAmmo() + " / " + player.getMaxAmmo();
             g2d.drawString(ammoText, 15, HEIGHT - 50);
         }
+    }
+
+    private void drawButton(Graphics2D g2d, Rectangle bounds, String text) {
+        g2d.setColor(new Color(60, 60, 60));
+        g2d.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        g2d.setColor(Color.WHITE);
+        g2d.setStroke(new BasicStroke(2));
+        g2d.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        g2d.setFont(new Font("Consolas", Font.BOLD, 30));
+        FontMetrics fm = g2d.getFontMetrics();
+        int stringX = bounds.x + (bounds.width - fm.stringWidth(text)) / 2;
+        int stringY = bounds.y + (bounds.height - fm.getHeight()) / 2 + fm.getAscent();
+        g2d.drawString(text, stringX, stringY);
     }
 
     @Override
