@@ -115,27 +115,18 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             spawnMysterious();
             return;
         }
-
         double healthMultiplier = Math.pow(1.15, wave - 1);
         int m1Health = (int)(20 * healthMultiplier);
         int m2Health = (int)(10 * healthMultiplier);
         int spawnSide = rand.nextInt(4); double x = 0, y = 0;
         switch (spawnSide) { case 0: x = rand.nextInt(WIDTH); y = -64; break; case 1: x = WIDTH; y = rand.nextInt(HEIGHT); break; case 2: x = rand.nextInt(WIDTH); y = HEIGHT; break; case 3: x = -64; y = rand.nextInt(HEIGHT); break; }
-        
-        if (rand.nextBoolean()) { 
-            monsters.add(new Monster(x, y, m1Health, 3.0, "/res/images/Monster1.png", false, false)); 
-        } else { 
-            monsters.add(new Monster(x, y, m2Health, 6.0, "/res/images/Monster2.png", false, false)); 
-        }
+        if (rand.nextBoolean()) { monsters.add(new Monster(x, y, m1Health, 3.0, "/res/images/Monster1.png", false, false)); } else { monsters.add(new Monster(x, y, m2Health, 6.0, "/res/images/Monster2.png", false, false)); }
     }
     
     private void spawnMysterious() {
-        int health = 1;
-        double speed = 7.5;
-        
+        int health = 30; double speed = 7.0;
         int spawnSide = rand.nextInt(4); double x = 0, y = 0;
         switch (spawnSide) { case 0: x = rand.nextInt(WIDTH); y = -64; break; case 1: x = WIDTH; y = rand.nextInt(HEIGHT); break; case 2: x = rand.nextInt(WIDTH); y = HEIGHT; break; case 3: x = -64; y = rand.nextInt(HEIGHT); break; }
-        
         monsters.add(new Monster(x, y, health, speed, "/res/images/Mysterious.png", false, true));
     }
 
@@ -150,20 +141,13 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         Iterator<Monster> monsterIter = monsters.iterator();
         while (monsterIter.hasNext()) {
             Monster monster = monsterIter.next();
-            
             if (player.getBounds().intersects(monster.getBounds())) {
-                if (monster.isBoss()) { 
-                    player.takeDamage(player.getMaxHealth() * 2); 
-                } else if (monster.isMysterious()) {
-                    int damage = (int) (player.getMaxHealth() * 0.25);
-                    player.takeDamage(damage);
-                } else { 
-                    player.takeDamage(10); 
-                }
+                if (monster.isBoss()) { player.takeDamage(player.getMaxHealth() * 2); } 
+                else if (monster.isMysterious()) { player.takeDamage((int)(player.getMaxHealth() * 0.25)); }
+                else { player.takeDamage(10); }
                 monsterIter.remove();
                 continue;
             }
-
             Iterator<Bullet> bulletIter = bullets.iterator();
             while (bulletIter.hasNext()) {
                 Bullet bullet = bulletIter.next();
@@ -225,9 +209,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                 int titleWidth = fm.stringWidth(title);
                 g2d.drawString(title, (WIDTH - titleWidth) / 2, HEIGHT / 2 - 100);
             }
-            
             drawButton(g2d, startButtonBounds, gameState == GameState.START_MENU ? "START" : "RESTART");
-
             if (gameState == GameState.GAME_OVER) {
                 g2d.setColor(Color.RED); g2d.setFont(new Font("Consolas", Font.BOLD, 72));
                 String msg = "GAME OVER"; int w = g2d.getFontMetrics().stringWidth(msg);
@@ -239,13 +221,27 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         } else if (gameState == GameState.PLAYING) {
             for (Monster m : monsters) m.draw(g2d);
             if (player.image != null) g2d.drawImage(player.image, player.getX(), player.getY(), player.getWidth(), player.getHeight(), null);
+            
+            // --- UPDATED: Gun Drawing Logic ---
             if (player.gunImage != null) {
                 AffineTransform old = g2d.getTransform();
                 g2d.translate(player.getX() + player.getWidth() / 2.0, player.getY() + player.getHeight() / 2.0);
-                g2d.rotate(player.gunAngle);
-                g2d.drawImage(player.gunImage, 0, -(int)player.getGunHeight() / 2, (int)player.getGunWidth(), (int)player.getGunHeight(), null);
+                g2d.rotate(player.gunAngle); // Always rotate to the correct angle
+
+                int gunWidth = (int)player.getGunWidth();
+                int gunHeight = (int)player.getGunHeight();
+
+                if (player.isGunFlipped) {
+                    // If flipped, draw with negative height and positive y-offset
+                    g2d.drawImage(player.gunImage, 0, gunHeight / 2, gunWidth, -gunHeight, null);
+                } else {
+                    // If not flipped, draw normally with negative y-offset
+                    g2d.drawImage(player.gunImage, 0, -gunHeight / 2, gunWidth, gunHeight, null);
+                }
+                
                 g2d.setTransform(old);
             }
+            
             for (Bullet b : bullets) b.draw(g2d);
             drawHealthUI(g2d);
             drawWaveUI(g2d);

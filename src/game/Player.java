@@ -12,10 +12,14 @@ public class Player {
     private int maxHealth = 100;
     private final int speed = 5;
     private final int char_scale = 3;
-    private final double gun_scale = 0.125;
+    private final double gun_scale = 2;
     public boolean movingUp, movingDown, movingLeft, movingRight;
     public BufferedImage image, gunImage;
     public double gunAngle = 0.0;
+    
+    // --- Flag to track gun orientation ---
+    public boolean isGunFlipped = false;
+
     private int maxAmmo = 15;
     private int currentAmmo;
     private boolean isReloading = false;
@@ -99,7 +103,6 @@ public class Player {
         this.maxAmmo += ammoIncrease;
     }
     
-    // --- UPDATED: Heals for a specific amount, capped at max health ---
     public void heal(int amount) {
         this.health += amount;
         if (this.health > this.maxHealth) {
@@ -107,10 +110,20 @@ public class Player {
         }
     }
 
+    /**
+     * UPDATED: This method now calculates the angle AND determines if the gun should be flipped.
+     */
     public void updateGunAngle(int mouseX, int mouseY) {
         double dx = mouseX - (this.x + getWidth() / 2.0);
         double dy = mouseY - (this.y + getHeight() / 2.0);
         this.gunAngle = Math.atan2(dy, dx);
+
+        // This is the crucial logic: check if the angle is pointing to the left
+        if (this.gunAngle > Math.PI / 2 || this.gunAngle < -Math.PI / 2) {
+            isGunFlipped = true;
+        } else {
+            isGunFlipped = false;
+        }
     }
     
     public void takeDamage(int amount) {
@@ -132,7 +145,7 @@ public class Player {
     public int getY() { return y; }
     public int getWidth() { return (image != null ? image.getWidth() : 0) * char_scale; }
     public int getHeight() { return (image != null ? image.getHeight() : 0) * char_scale; }
-    public double getGunWidth() { return (gunImage != null ? gunImage.getWidth() : 0) * gun_scale; }
+   aublic double getGunWidth() { return (gunImage != null ? gunImage.getWidth() : 0) * gun_scale; }
     public double getGunHeight() { return (gunImage != null ? gunImage.getHeight() : 0) * gun_scale; }
     public int getHealth() { return health; }
     public int getMaxHealth() { return maxHealth; }
