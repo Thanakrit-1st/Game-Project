@@ -26,9 +26,7 @@ public class Monster {
         this.isBoss = isBoss;
         this.isMysterious = isMysterious;
         loadImage(imagePath);
-
         double currentScale = isBoss ? scale + 1.0 : scale;
-
         if (this.image != null) {
             this.width = (int) (image.getWidth() * currentScale);
             this.height = (int) (image.getHeight() * currentScale);
@@ -48,7 +46,7 @@ public class Monster {
             image = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
             Graphics2D g = image.createGraphics();
             if (isBoss) g.setColor(Color.MAGENTA);
-            else if (isMysterious) g.setColor(Color.CYAN); // Fallback color for Mysterious
+            else if (isMysterious) g.setColor(Color.CYAN);
             else g.setColor(new Color(128, 0, 128));
             g.fillRect(0, 0, 32, 32);
             g.dispose();
@@ -61,7 +59,6 @@ public class Monster {
         double dirX = playerCenterX - (this.x + this.width / 2.0);
         double dirY = playerCenterY - (this.y + this.height / 2.0);
         double distance = Math.sqrt(dirX * dirX + dirY * dirY);
-        
         if (distance > 0) {
             this.x += (dirX / distance) * speed;
             this.y += (dirY / distance) * speed;
@@ -73,11 +70,10 @@ public class Monster {
             g2d.drawImage(image, (int)x, (int)y, width, height, null);
         }
     }
-
-    public void takeDamage(int amount) {
-        this.health -= amount;
-    }
-
+    
+    public int getX() { return (int)x; }
+    public int getY() { return (int)y; }
+    public void takeDamage(int amount) { this.health -= amount; }
     public int getHealth() { return health; }
     public boolean isBoss() { return isBoss; }
     public boolean isMysterious() { return isMysterious; }
