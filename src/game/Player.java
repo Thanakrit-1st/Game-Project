@@ -7,7 +7,7 @@ import java.io.InputStream;
 import java.awt.Rectangle;
 
 public class Player {
-    // --- Core Player Stats ---
+
     private int x, y;
     private int health;
     private int maxHealth = 100;
@@ -18,13 +18,11 @@ public class Player {
     public double gunAngle = 0.0;
     public boolean isGunFlipped = false;
 
-    // --- Weapon System ---
     public enum WeaponType { PISTOL, SHOTGUN, RIFLE }
     private WeaponType currentWeapon;
     private BufferedImage pistolImage, shotgunImage, rifleImage;
     public BufferedImage equippedWeaponImage;
     
-    // --- Weapon-Specific Stats ---
     private int currentAmmo;
     private int maxAmmo;
     private int bulletDamage;
@@ -32,7 +30,9 @@ public class Player {
     private long attackCooldown;
     private long lastAttackTime = 0;
 
-    // --- Reloading State ---
+    private int damageUpgradeLevel = 0;
+    private int masteryUpgradeLevel = 0;
+
     private boolean isReloading = false;
     private long reloadStartTime;
 
@@ -49,7 +49,7 @@ public class Player {
             characterImage = ImageIO.read(getClass().getResourceAsStream("/res/images/Protagonist.png"));
             pistolImage = ImageIO.read(getClass().getResourceAsStream("/res/images/gun.png"));
             shotgunImage = ImageIO.read(getClass().getResourceAsStream("/res/images/shotgun.png")); 
-            rifleImage = ImageIO.read(getClass().getResourceAsStream("/res/images/kar-98.png"));
+            rifleImage = ImageIO.read(getClass().getResourceAsStream("/res/images/rifle.png"));
         } catch (Exception e) { System.err.println("Failed to load one or more player/weapon images."); }
     }
 
@@ -70,23 +70,34 @@ public class Player {
     public void switchWeapon(WeaponType newWeapon) {
         this.currentWeapon = newWeapon;
         isReloading = false; 
+        
+        int baseDamage = 0, baseMaxAmmo = 0;
+        double baseReloadTime = 0;
+
         switch (newWeapon) {
             case PISTOL:
                 equippedWeaponImage = pistolImage;
-                bulletDamage = 7; maxAmmo = 15; reloadTime = 1500; attackCooldown = 200;
+                baseDamage = 7; baseMaxAmmo = 15; baseReloadTime = 1500; attackCooldown = 200;
                 break;
             case SHOTGUN:
                 equippedWeaponImage = shotgunImage;
-                bulletDamage = 5; 
-                maxAmmo = 5;
-                reloadTime = 2500;
-                attackCooldown = 1000;
+                baseDamage = 5; baseMaxAmmo = 5; baseReloadTime = 2500; attackCooldown = 1000;
                 break;
             case RIFLE:
                 equippedWeaponImage = rifleImage;
-                bulletDamage = 30; maxAmmo = 3; reloadTime = 2500; attackCooldown = 800;
+                baseDamage = 30; baseMaxAmmo = 2; baseReloadTime = 2500; attackCooldown = 800;
                 break;
         }
+
+        int damageBonusPerLevel = (newWeapon == WeaponType.RIFLE) ? 5 : 1;
+        this.bulletDamage = baseDamage + (damageUpgradeLevel * damageBonusPerLevel);
+
+        int ammoBonusPerLevel = (newWeapon == WeaponType.PISTOL) ? 5 : 1;
+        double reloadReductionPerLevel = (newWeapon == WeaponType.SHOTGUN) ? 100 : 200;
+        this.maxAmmo = baseMaxAmmo + (masteryUpgradeLevel * ammoBonusPerLevel);
+        this.reloadTime = baseReloadTime - (masteryUpgradeLevel * reloadReductionPerLevel);
+        if (this.reloadTime < 100) this.reloadTime = 100;
+
         currentAmmo = maxAmmo;
     }
 
@@ -94,14 +105,12 @@ public class Player {
         if (isReloading || (System.currentTimeMillis() - lastAttackTime < attackCooldown) || currentAmmo <= 0) {
             return false;
         }
-
         lastAttackTime = System.currentTimeMillis();
         currentAmmo--;
-
         if (currentAmmo <= 0) {
             startReload();
         }
-        return true; // Attack was successful
+        return true;
     }
 
     public void startReload() {
@@ -119,13 +128,11 @@ public class Player {
     }
 
     public void resetMovementFlags() { movingUp = false; movingDown = false; movingLeft = false; movingRight = false; }
+    
     public void increaseMaxHealth(int amount) { this.maxHealth += amount; }
-    public void increaseBulletDamage(int amount) { this.bulletDamage += amount; }
-    public void improveGunStats(double reloadReduction, int ammoIncrease) {
-        this.reloadTime -= reloadReduction;
-        if (this.reloadTime < 100) this.reloadTime = 100;
-        this.maxAmmo += ammoIncrease;
-    }
+    public void upgradeDamage() { this.damageUpgradeLevel++; }
+    public void upgradeMastery() { this.masteryUpgradeLevel++; }
+
     public void heal(int amount) { this.health += amount; if (this.health > this.maxHealth) this.health = this.maxHealth; }
     public void takeDamage(int amount) { this.health -= amount; if (this.health < 0) this.health = 0; }
     

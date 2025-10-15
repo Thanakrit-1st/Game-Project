@@ -16,8 +16,8 @@ import java.util.Iterator;
 
 public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMotionListener, MouseListener {
 
-    public static final int WIDTH = 800;
-    public static final int HEIGHT = 600;
+    public static final int WIDTH = 950;
+    public static final int HEIGHT = 750;
     private final int FPS = 60;
     private enum GameState { START_MENU, PLAYING, GAME_OVER, WAVE_COMPLETED, CHEST_OPEN }
     private GameState gameState;
@@ -34,8 +34,10 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private long lastSpawnTime;
     private final long spawnCooldown = 2000;
     
-    private BufferedImage hpCardImg, damageCardImg, gunMasterCardImg;
-    private Rectangle hpCardBounds, damageCardBounds, gunMasterCardBounds, confirmButtonBounds;
+    private BufferedImage hpCardImg, pistolDamageCardImg, pistolMasterCardImg,
+                          rifleDamageCardImg, rifleMasterCardImg,
+                          shotgunDamageCardImg, shotgunMasterCardImg;
+    private Rectangle hpCardBounds, damageCardBounds, masterCardBounds, confirmButtonBounds;
     private int selectedSkillCard = -1;
 
     private Chest droppedChest = null;
@@ -59,16 +61,20 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             startButtonBounds = new Rectangle((WIDTH - btnWidth) / 2, (HEIGHT - btnHeight) / 2, btnWidth, btnHeight);
             
             hpCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/need more hp.png"));
-            damageCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/DeadlyBullet.png"));
-            gunMasterCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/GunMaster.png"));
-            
+            pistolDamageCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/DeadlyBullet.png"));
+            pistolMasterCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/GunMaster.png"));
+            rifleDamageCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/deadly bullet(rifle).png"));
+            rifleMasterCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/sniper master.png"));
+            shotgunDamageCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/big bullet.png"));
+            shotgunMasterCardImg = ImageIO.read(getClass().getResourceAsStream("/res/images/shotgun master.png"));
+
             int cardWidth = hpCardImg.getWidth(), cardHeight = hpCardImg.getHeight();
             int spacing = 30, totalWidth = (cardWidth * 3) + (spacing * 2);
             int startX = (WIDTH - totalWidth) / 2, y = (HEIGHT - cardHeight) / 2;
             
             hpCardBounds = new Rectangle(startX, y, cardWidth, cardHeight);
             damageCardBounds = new Rectangle(startX + cardWidth + spacing, y, cardWidth, cardHeight);
-            gunMasterCardBounds = new Rectangle(startX + (cardWidth + spacing) * 2, y, cardWidth, cardHeight);
+            masterCardBounds = new Rectangle(startX + (cardWidth + spacing) * 2, y, cardWidth, cardHeight);
 
             int confirmWidth = 180, confirmHeight = 50;
             confirmButtonBounds = new Rectangle((WIDTH - confirmWidth) / 2, y + cardHeight + 20, confirmWidth, confirmHeight);
@@ -79,7 +85,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             
             pistolCardBounds = new Rectangle(hpCardBounds);
             rifleCardBounds = new Rectangle(damageCardBounds);
-            shotgunCardBounds = new Rectangle(gunMasterCardBounds);
+            shotgunCardBounds = new Rectangle(masterCardBounds);
 
         } catch (Exception e) { e.printStackTrace(); }
     }
@@ -144,10 +150,19 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         bossSpawnedThisWave = true;
     }
 
-    // --- UPDATED: This method now correctly handles all shotgun pellets ---
     private void checkCollisions() {
         boolean bossIsDead = false;
-
+        Iterator<Bullet> bulletIter = bullets.iterator();
+        while (bulletIter.hasNext()) {
+            Bullet bullet = bulletIter.next();
+            for (Monster monster : monsters) {
+                if (bullet.getBounds().intersects(monster.getBounds())) {
+                    monster.takeDamage(bullet.getDamage());
+                    bulletIter.remove();
+                    break;
+                }
+            }
+        }
         Iterator<Monster> monsterIter = monsters.iterator();
         while (monsterIter.hasNext()) {
             Monster monster = monsterIter.next();
@@ -158,22 +173,10 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                 monsterIter.remove();
                 continue;
             }
-
-            // Check all bullets against the current monster
-            Iterator<Bullet> bulletIter = bullets.iterator();
-            while (bulletIter.hasNext()) {
-                Bullet bullet = bulletIter.next();
-                if (bullet.getBounds().intersects(monster.getBounds())) {
-                    monster.takeDamage(bullet.getDamage());
-                    bulletIter.remove(); // Remove the bullet that hit
-                    // Do NOT break here, so other bullets can also hit this monster
-                }
-            }
-
             if (monster.getHealth() <= 0) {
                 if (monster.isBoss()) bossIsDead = true;
                 if (!chestDroppedThisWave) {
-                    if (rand.nextInt(100) < 100) { // 100% chance for testing
+                    if (rand.nextInt(100) < 100) {
                         droppedChest = new Chest(monster.getX(), monster.getY());
                         chestDroppedThisWave = true;
                     }
@@ -261,13 +264,25 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         String title = "Choose Your Upgrade!"; int w = g2d.getFontMetrics().stringWidth(title);
         g2d.drawString(title, (WIDTH - w) / 2, 100);
         if (hpCardImg != null) g2d.drawImage(hpCardImg, hpCardBounds.x, hpCardBounds.y, null);
-        if (damageCardImg != null) g2d.drawImage(damageCardImg, damageCardBounds.x, damageCardBounds.y, null);
-        if (gunMasterCardImg != null) g2d.drawImage(gunMasterCardImg, gunMasterCardBounds.x, gunMasterCardBounds.y, null);
+        switch(player.getCurrentWeapon()) {
+            case PISTOL:
+                if (pistolDamageCardImg != null) g2d.drawImage(pistolDamageCardImg, damageCardBounds.x, damageCardBounds.y, null);
+                if (pistolMasterCardImg != null) g2d.drawImage(pistolMasterCardImg, masterCardBounds.x, masterCardBounds.y, null);
+                break;
+            case RIFLE:
+                if (rifleDamageCardImg != null) g2d.drawImage(rifleDamageCardImg, damageCardBounds.x, damageCardBounds.y, null);
+                if (rifleMasterCardImg != null) g2d.drawImage(rifleMasterCardImg, masterCardBounds.x, masterCardBounds.y, null);
+                break;
+            case SHOTGUN:
+                if (shotgunDamageCardImg != null) g2d.drawImage(shotgunDamageCardImg, damageCardBounds.x, damageCardBounds.y, null);
+                if (shotgunMasterCardImg != null) g2d.drawImage(shotgunMasterCardImg, masterCardBounds.x, masterCardBounds.y, null);
+                break;
+        }
         if (selectedSkillCard != -1) {
             g2d.setColor(Color.YELLOW); g2d.setStroke(new BasicStroke(4));
             if (selectedSkillCard == 0) g2d.drawRect(hpCardBounds.x, hpCardBounds.y, hpCardBounds.width, hpCardBounds.height);
             if (selectedSkillCard == 1) g2d.drawRect(damageCardBounds.x, damageCardBounds.y, damageCardBounds.width, damageCardBounds.height);
-            if (selectedSkillCard == 2) g2d.drawRect(gunMasterCardBounds.x, gunMasterCardBounds.y, gunMasterCardBounds.width, gunMasterCardBounds.height);
+            if (selectedSkillCard == 2) g2d.drawRect(masterCardBounds.x, masterCardBounds.y, masterCardBounds.width, masterCardBounds.height);
             drawButton(g2d, confirmButtonBounds, "Confirm");
         }
     }
@@ -328,27 +343,33 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                 int damage = player.getBulletDamage();
 
                 if (player.getCurrentWeapon() == Player.WeaponType.SHOTGUN) {
-                    // --- UPDATED: Fires 8 bullets for the shotgun ---
-                    for (int i = 0; i < 8; i++) {
+                    for (int i = 0; i < 8; i++) { // Fires 8 bullets
                         double spread = Math.toRadians((rand.nextDouble() - 0.5) * 20);
                         bullets.add(new Bullet(baseX, baseY, baseAngle + spread, damage));
                     }
-                } else { // Pistol and Rifle
+                } else {
                     bullets.add(new Bullet(baseX, baseY, baseAngle, damage));
                 }
             }
         } else if (gameState == GameState.WAVE_COMPLETED) {
             if (hpCardBounds.contains(e.getPoint())) { selectedSkillCard = 0; }
             else if (damageCardBounds.contains(e.getPoint())) { selectedSkillCard = 1; }
-            else if (gunMasterCardBounds.contains(e.getPoint())) { selectedSkillCard = 2; }
+            else if (masterCardBounds.contains(e.getPoint())) { selectedSkillCard = 2; }
             if (selectedSkillCard != -1 && confirmButtonBounds.contains(e.getPoint())) {
                 int healAmount = (int)(player.getMaxHealth() * 0.40);
                 switch (selectedSkillCard) {
-                    case 0: player.increaseMaxHealth(10); healAmount = (int)(player.getMaxHealth() * 0.40); break;
-                    case 1: player.increaseBulletDamage(1); break;
-                    case 2: player.improveGunStats(200, 5); break;
+                    case 0: 
+                        player.increaseMaxHealth(10); 
+                        break;
+                    case 1: 
+                        player.upgradeDamage(); 
+                        break;
+                    case 2: 
+                        player.upgradeMastery(); 
+                        break;
                 }
                 player.heal(healAmount);
+                player.switchWeapon(player.getCurrentWeapon()); 
                 startNextWave();
             }
         } else if (gameState == GameState.CHEST_OPEN) {
