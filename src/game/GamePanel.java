@@ -36,7 +36,9 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     
     private BufferedImage hpCardImg, pistolDamageCardImg, pistolMasterCardImg,
                           rifleDamageCardImg, rifleMasterCardImg,
-                          shotgunDamageCardImg, shotgunMasterCardImg;
+                          shotgunDamageCardImg, shotgunMasterCardImg,
+                          backgroundImage;
+                          
     private Rectangle hpCardBounds, damageCardBounds, masterCardBounds, confirmButtonBounds;
     private int selectedSkillCard = -1;
 
@@ -57,6 +59,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     
     private void loadUIImages() {
         try {
+            backgroundImage = ImageIO.read(getClass().getResourceAsStream("/res/images/background.png"));
+            
             int btnWidth = 200, btnHeight = 60;
             startButtonBounds = new Rectangle((WIDTH - btnWidth) / 2, (HEIGHT - btnHeight) / 2, btnWidth, btnHeight);
             
@@ -156,7 +160,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         while (bulletIter.hasNext()) {
             Bullet bullet = bulletIter.next();
             for (Monster monster : monsters) {
-                if (bullet.getBounds().intersects(monster.getBounds())) {
+                if (monster.getHealth() > 0 && bullet.getBounds().intersects(monster.getBounds())) {
                     monster.takeDamage(bullet.getDamage());
                     bulletIter.remove();
                     break;
@@ -216,8 +220,17 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2d.setColor(Color.BLACK);
-        g2d.fillRect(0, 0, WIDTH, HEIGHT);
+        
+        if (backgroundImage != null) {
+            for (int y = 0; y < HEIGHT; y += 64) {
+                for (int x = 0; x < WIDTH; x += 64) {
+                    g2d.drawImage(backgroundImage, x, y, 64, 64, null);
+                }
+            }
+        } else {
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(0, 0, WIDTH, HEIGHT);
+        }
 
         if (gameState == GameState.START_MENU || gameState == GameState.GAME_OVER) {
             if (gameState == GameState.START_MENU) {
@@ -343,7 +356,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                 int damage = player.getBulletDamage();
 
                 if (player.getCurrentWeapon() == Player.WeaponType.SHOTGUN) {
-                    for (int i = 0; i < 8; i++) { // Fires 8 bullets
+                    for (int i = 0; i < 8; i++) {
                         double spread = Math.toRadians((rand.nextDouble() - 0.5) * 20);
                         bullets.add(new Bullet(baseX, baseY, baseAngle + spread, damage));
                     }
