@@ -143,7 +143,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     }
 
     private void spawnMysterious() {
-        int health = 30, spawnSide = rand.nextInt(4); double speed = 7.0, x = 0, y = 0;
+        int health = 1, spawnSide = rand.nextInt(4); double speed = 9, x = 0, y = 0;
         switch (spawnSide) { case 0: x = rand.nextInt(WIDTH); y = -64; break; case 1: x = WIDTH; y = rand.nextInt(HEIGHT); break; case 2: x = rand.nextInt(WIDTH); y = HEIGHT; break; case 3: x = -64; y = rand.nextInt(HEIGHT); break; }
         monsters.add(new Monster(x, y, health, speed, "/res/images/Mysterious.png", false, true));
     }

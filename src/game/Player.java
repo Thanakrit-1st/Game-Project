@@ -7,7 +7,7 @@ import java.io.InputStream;
 import java.awt.Rectangle;
 
 public class Player {
-
+    // --- Player Stats ---
     private int x, y;
     private int health;
     private int maxHealth = 100;
@@ -18,11 +18,13 @@ public class Player {
     public double gunAngle = 0.0;
     public boolean isGunFlipped = false;
 
+    // --- Weapon System ---
     public enum WeaponType { PISTOL, SHOTGUN, RIFLE }
     private WeaponType currentWeapon;
     private BufferedImage pistolImage, shotgunImage, rifleImage;
     public BufferedImage equippedWeaponImage;
     
+    // --- Weapon ---
     private int currentAmmo;
     private int maxAmmo;
     private int bulletDamage;
@@ -30,9 +32,11 @@ public class Player {
     private long attackCooldown;
     private long lastAttackTime = 0;
 
+    // --- Upgrade Levels ---
     private int damageUpgradeLevel = 0;
     private int masteryUpgradeLevel = 0;
 
+    // --- Reloading ---
     private boolean isReloading = false;
     private long reloadStartTime;
 
@@ -77,15 +81,15 @@ public class Player {
         switch (newWeapon) {
             case PISTOL:
                 equippedWeaponImage = pistolImage;
-                baseDamage = 7; baseMaxAmmo = 15; baseReloadTime = 1500; attackCooldown = 200;
+                baseDamage = 5; baseMaxAmmo = 15; baseReloadTime = 1500; attackCooldown = 200;
                 break;
             case SHOTGUN:
                 equippedWeaponImage = shotgunImage;
-                baseDamage = 5; baseMaxAmmo = 5; baseReloadTime = 2500; attackCooldown = 1000;
+                baseDamage = 5; baseMaxAmmo = 2; baseReloadTime = 3000; attackCooldown = 1000;
                 break;
             case RIFLE:
                 equippedWeaponImage = rifleImage;
-                baseDamage = 30; baseMaxAmmo = 2; baseReloadTime = 2500; attackCooldown = 800;
+                baseDamage = 30; baseMaxAmmo = 3; baseReloadTime = 2500; attackCooldown = 800;
                 break;
         }
 
@@ -128,11 +132,9 @@ public class Player {
     }
 
     public void resetMovementFlags() { movingUp = false; movingDown = false; movingLeft = false; movingRight = false; }
-    
     public void increaseMaxHealth(int amount) { this.maxHealth += amount; }
     public void upgradeDamage() { this.damageUpgradeLevel++; }
     public void upgradeMastery() { this.masteryUpgradeLevel++; }
-
     public void heal(int amount) { this.health += amount; if (this.health > this.maxHealth) this.health = this.maxHealth; }
     public void takeDamage(int amount) { this.health -= amount; if (this.health < 0) this.health = 0; }
     
