@@ -24,7 +24,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private Thread gameThread;
     private Player player;
     private final List<Bullet> bullets = new ArrayList<>();
-    private final List<Monster> monsters = new ArrayList<>();
+    private final List<Monster> monsters = new ArrayList<>(); 
     private final Random rand = new Random();
     private Rectangle startButtonBounds;
     private int wave = 1;
@@ -37,7 +37,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
     private BufferedImage hpCardImg, pistolDamageCardImg, pistolMasterCardImg,
                           rifleDamageCardImg, rifleMasterCardImg,
                           shotgunDamageCardImg, shotgunMasterCardImg,
-                          backgroundImage;
+                          backgroundImage; 
                           
     private Rectangle hpCardBounds, damageCardBounds, masterCardBounds, confirmButtonBounds;
     private int selectedSkillCard = -1;
@@ -126,7 +126,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             if (System.currentTimeMillis() - lastSpawnTime > spawnCooldown) { spawnMonster(); lastSpawnTime = System.currentTimeMillis(); }
             
             for (Bullet b : bullets) b.update();
-            for (Monster m : monsters) m.update(player);
+            for (Monster m : monsters) m.update(); // Use the inherited update
             checkCollisions();
             bullets.removeIf(b -> !getBounds().contains(b.getBounds()));
         }
@@ -138,19 +138,19 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         int m1Health = (int)(20 * healthMultiplier), m2Health = (int)(10 * healthMultiplier);
         int spawnSide = rand.nextInt(4); double x = 0, y = 0;
         switch (spawnSide) { case 0: x = rand.nextInt(WIDTH); y = -64; break; case 1: x = WIDTH; y = rand.nextInt(HEIGHT); break; case 2: x = rand.nextInt(WIDTH); y = HEIGHT; break; case 3: x = -64; y = rand.nextInt(HEIGHT); break; }
-        if (rand.nextBoolean()) { monsters.add(new Monster(x, y, m1Health, 3.0, "/res/images/Monster1.png", false, false)); } 
-        else { monsters.add(new Monster(x, y, m2Health, 6.0, "/res/images/Monster2.png", false, false)); }
+        if (rand.nextBoolean()) { monsters.add(new Monster(x, y, m1Health, 3.0, "/res/images/Monster1.png", false, false, player)); } 
+        else { monsters.add(new Monster(x, y, m2Health, 6.0, "/res/images/Monster2.png", false, false, player)); }
     }
 
     private void spawnMysterious() {
-        int health = 1, spawnSide = rand.nextInt(4); double speed = 9, x = 0, y = 0;
+        int health = 20, spawnSide = rand.nextInt(4); double speed = 8.0, x = 0, y = 0;
         switch (spawnSide) { case 0: x = rand.nextInt(WIDTH); y = -64; break; case 1: x = WIDTH; y = rand.nextInt(HEIGHT); break; case 2: x = rand.nextInt(WIDTH); y = HEIGHT; break; case 3: x = -64; y = rand.nextInt(HEIGHT); break; }
-        monsters.add(new Monster(x, y, health, speed, "/res/images/Mysterious.png", false, true));
+        monsters.add(new Monster(x, y, health, speed, "/res/images/Mysterious.png", false, true, player));
     }
 
     private void spawnBoss() {
         int bossHealth = (int)(100 * Math.pow(1.15, wave - 1));
-        monsters.add(new Monster(WIDTH / 2.0, -100, bossHealth, 3.0, "/res/images/boss.png", true, false));
+        monsters.add(new Monster(WIDTH / 2.0, -100, bossHealth, 3.0, "/res/images/boss.png", true, false, player));
         bossSpawnedThisWave = true;
     }
 
@@ -251,8 +251,8 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             }
         } else if (gameState == GameState.PLAYING) {
             if (droppedChest != null) droppedChest.draw(g2d);
-            for (Monster m : monsters) m.draw(g2d);
-            if (player.characterImage != null) g2d.drawImage(player.characterImage, player.getX(), player.getY(), player.getWidth(), player.getHeight(), null);
+            for (Monster m : monsters) m.draw(g2d); 
+            if (player.image != null) player.draw(g2d); 
             if (player.equippedWeaponImage != null) {
                 AffineTransform old = g2d.getTransform();
                 g2d.translate(player.getX() + player.getWidth() / 2.0, player.getY() + player.getHeight() / 2.0);
@@ -382,6 +382,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                         break;
                 }
                 player.heal(healAmount);
+                // This is the crucial line to fix the bug
                 player.switchWeapon(player.getCurrentWeapon()); 
                 startNextWave();
             }

@@ -34,3 +34,4 @@ public class Chest {
         return new Rectangle(x, y, width, height);
     }
 }
+

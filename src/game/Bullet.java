@@ -6,14 +6,12 @@ import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 
 public class Bullet {
-
     private double x, y;
     private final int bulletWidth = 14;
     private final int bulletHeight = 6;
     private final double speed = 20.0;
     private final double angle;
     private final int damage;
-
     private final double velX;
     private final double velY;
 
