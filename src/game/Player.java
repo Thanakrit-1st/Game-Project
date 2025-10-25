@@ -3,9 +3,9 @@ package src.game;
 import java.awt.image.BufferedImage;
 import java.awt.Rectangle;
 import java.awt.Color;
-import java.io.IOException; // Added for IOException
-import java.io.InputStream; // Added for InputStream
-import javax.imageio.ImageIO; // <-- FIX: Added missing import
+import java.io.IOException;
+import java.io.InputStream;
+import javax.imageio.ImageIO;
 
 public class Player extends Entity {
 
@@ -36,21 +36,18 @@ public class Player extends Entity {
     private boolean isReloading = false;
     private long reloadStartTime;
 
-    // Player scale (overrides Entity's default)
     private final int char_scale = 3;
 
     public Player(int startX, int startY) {
-        super(startX, startY, 100, 100, 5.0); // x, y, health, maxHealth, speed
+        super(startX, startY, 100, 100, 5.0); //health, maxHealth, speed
         this.scale = char_scale; 
         loadImages(); // Load character and weapon images
         switchWeapon(WeaponType.PISTOL);
     }
 
     private void loadImages() {
-        // Load character image using Entity's method
         super.loadImage("/res/images/Protagonist.png", Color.BLUE); 
 
-        // Load weapon images separately (not handled by Entity)
         try {
             pistolImage = ImageIO.read(getClass().getResourceAsStream("/res/images/gun.png"));
             shotgunImage = ImageIO.read(getClass().getResourceAsStream("/res/images/shotgun.png")); 

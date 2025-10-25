@@ -126,7 +126,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
             if (System.currentTimeMillis() - lastSpawnTime > spawnCooldown) { spawnMonster(); lastSpawnTime = System.currentTimeMillis(); }
             
             for (Bullet b : bullets) b.update();
-            for (Monster m : monsters) m.update(); // Use the inherited update
+            for (Monster m : monsters) m.update();
             checkCollisions();
             bullets.removeIf(b -> !getBounds().contains(b.getBounds()));
         }
@@ -382,7 +382,6 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
                         break;
                 }
                 player.heal(healAmount);
-                // This is the crucial line to fix the bug
                 player.switchWeapon(player.getCurrentWeapon()); 
                 startNextWave();
             }
