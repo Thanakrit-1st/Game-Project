@@ -76,7 +76,7 @@ public class Player extends Entity {
         int hw = (int)(w * 0.5), hh = (int)(h * 0.8);
         return new Rectangle((int)x + (w - hw) / 2, (int)y + (h - hh) / 2, hw, hh);
     }
-
+    //WEAPON details
     public void switchWeapon(WeaponType newWeapon) {
         this.currentWeapon = newWeapon;
         isReloading = false; 
@@ -84,8 +84,8 @@ public class Player extends Entity {
         double baseReloadTime = 0;
         switch (newWeapon) {
             case PISTOL: equippedWeaponImage = pistolImage; baseDamage = 5; baseMaxAmmo = 15; baseReloadTime = 1500; attackCooldown = 200; break;
-            case SHOTGUN: equippedWeaponImage = shotgunImage; baseDamage = 5; baseMaxAmmo = 2; baseReloadTime = 3000; attackCooldown = 1000; break;
-            case RIFLE: equippedWeaponImage = rifleImage; baseDamage = 30; baseMaxAmmo = 3; baseReloadTime = 2500; attackCooldown = 800; break;
+            case SHOTGUN: equippedWeaponImage = shotgunImage; baseDamage = 5; baseMaxAmmo = 2; baseReloadTime = 2850; attackCooldown = 8000; break;
+            case RIFLE: equippedWeaponImage = rifleImage; baseDamage = 30; baseMaxAmmo = 2; baseReloadTime = 2500; attackCooldown = 800; break;
         }
         int damageBonusPerLevel = (newWeapon == WeaponType.RIFLE) ? 5 : 1;
         this.bulletDamage = baseDamage + (damageUpgradeLevel * damageBonusPerLevel);
