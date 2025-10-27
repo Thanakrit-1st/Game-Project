@@ -14,7 +14,7 @@ public class Monster extends Entity {
         this.isBoss = isBoss;
         this.isMysterious = isMysterious;
         this.targetPlayer = playerToChase; 
-        this.scale = isBoss ? 2.5 : 1.5; 
+        this.scale = isBoss ? 2.0 : 1.5; 
         Color fallback = isBoss ? Color.MAGENTA : (isMysterious ? Color.CYAN : new Color(128, 0, 128));
         super.loadImage(imagePath, fallback);
     }

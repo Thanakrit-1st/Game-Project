@@ -132,6 +132,7 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         }
     }
 
+    //moster 1 & 2
     private void spawnMonster() {
         if (wave >= 3 && rand.nextInt(100) < 10) { spawnMysterious(); return; }
         double healthMultiplier = Math.pow(1.15, wave - 1);
@@ -141,16 +142,16 @@ public class GamePanel extends JPanel implements Runnable, KeyListener, MouseMot
         if (rand.nextBoolean()) { monsters.add(new Monster(x, y, m1Health, 3.0, "/res/images/Monster1.png", false, false, player)); } 
         else { monsters.add(new Monster(x, y, m2Health, 6.0, "/res/images/Monster2.png", false, false, player)); }
     }
-
+    //Mysterious
     private void spawnMysterious() {
         int health = 20, spawnSide = rand.nextInt(4); double speed = 8.0, x = 0, y = 0;
         switch (spawnSide) { case 0: x = rand.nextInt(WIDTH); y = -64; break; case 1: x = WIDTH; y = rand.nextInt(HEIGHT); break; case 2: x = rand.nextInt(WIDTH); y = HEIGHT; break; case 3: x = -64; y = rand.nextInt(HEIGHT); break; }
         monsters.add(new Monster(x, y, health, speed, "/res/images/Mysterious.png", false, true, player));
     }
-
+    //The Boss
     private void spawnBoss() {
         int bossHealth = (int)(100 * Math.pow(1.15, wave - 1));
-        monsters.add(new Monster(WIDTH / 2.0, -100, bossHealth, 3.0, "/res/images/boss.png", true, false, player));
+        monsters.add(new Monster(WIDTH / 2.0, -100, bossHealth, 2.75, "/res/images/boss.png", true, false, player));
         bossSpawnedThisWave = true;
     }
 

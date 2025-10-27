@@ -84,8 +84,8 @@ public class Player extends Entity {
         double baseReloadTime = 0;
         switch (newWeapon) {
             case PISTOL: equippedWeaponImage = pistolImage; baseDamage = 5; baseMaxAmmo = 15; baseReloadTime = 1500; attackCooldown = 200; break;
-            case SHOTGUN: equippedWeaponImage = shotgunImage; baseDamage = 5; baseMaxAmmo = 2; baseReloadTime = 2850; attackCooldown = 8000; break;
-            case RIFLE: equippedWeaponImage = rifleImage; baseDamage = 30; baseMaxAmmo = 2; baseReloadTime = 2500; attackCooldown = 800; break;
+            case SHOTGUN: equippedWeaponImage = shotgunImage; baseDamage = 5; baseMaxAmmo = 2; baseReloadTime = 2650; attackCooldown = 700; break;
+            case RIFLE: equippedWeaponImage = rifleImage; baseDamage = 30; baseMaxAmmo = 2; baseReloadTime = 2500; attackCooldown = 750; break;
         }
         int damageBonusPerLevel = (newWeapon == WeaponType.RIFLE) ? 5 : 1;
         this.bulletDamage = baseDamage + (damageUpgradeLevel * damageBonusPerLevel);
